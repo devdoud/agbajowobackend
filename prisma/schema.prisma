@@ -1,0 +1,227 @@
+// Schéma de données Agbajowo — lot L1
+// Réf : docs/03-modele-donnees.md (modèle v2). Les `id` sont des UUIDv7 générés
+// côté client (offline-first) ; aucun `@default(uuid())`. Les `serverSeq` et les
+// numéros officiels (numeroMembre, receiptNumber) sont attribués par le serveur à
+// la synchronisation (cf. docs/05-sync.md), donc nullables / sans défaut DB ici.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────── Énumérations ─────────────────────────
+
+enum RoleAgent {
+  AGENT
+  SUPERVISEUR
+  ADMIN
+}
+
+enum Groupe {
+  GROUPE_1
+  GROUPE_2
+}
+
+enum CadenceCollecte {
+  QUOTIDIENNE
+  TOUS_LES_N_JOURS
+}
+
+enum StatutContrat {
+  ACTIF
+  TERMINE
+  SUSPENDU
+  CLOTURE_ANTICIPEE
+}
+
+enum TypeRetrait {
+  PARTIEL
+  TOTAL
+}
+
+enum TypeMedia {
+  PHOTO_IDENTITE
+}
+
+// ───────────────────────── Agents ─────────────────────────
+
+model Agent {
+  id           String    @id @db.Uuid
+  nom          String
+  telephone    String    @unique
+  passwordHash String    @map("password_hash")
+  role         RoleAgent @default(AGENT)
+  actif        Boolean   @default(true)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  membres    Membre[]
+  versements Versement[]
+  avances    Avance[]
+  retraits   Retrait[]
+
+  @@map("agents")
+}
+
+// ───────────────────────── Médias (photos d'identité) ─────────────────────────
+
+model Media {
+  id           String    @id @db.Uuid
+  type         TypeMedia @default(PHOTO_IDENTITE)
+  mime         String
+  tailleOctets Int       @map("taille_octets")
+  checksum     String    @unique // déduplication (docs/05-sync.md §10)
+  chemin       String
+  largeur      Int?
+  hauteur      Int?
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  serverSeq    BigInt    @map("server_seq")
+
+  membres Membre[]
+
+  @@map("medias")
+}
+
+// ───────────────────────── Membres ─────────────────────────
+
+model Membre {
+  id               String    @id @db.Uuid
+  ownerId          String    @map("owner_id") @db.Uuid
+  numeroMembre     String?   @unique @map("numero_membre") // attribué serveur
+  nom              String
+  prenoms          String
+  telephone        String
+  dateNaissance    DateTime  @map("date_naissance") @db.Date
+  lieuNaissance    String    @map("lieu_naissance")
+  profession       String
+  quartier         String
+  arrondissement   String
+  commune          String
+  photoId          String    @map("photo_id") @db.Uuid
+  dateSouscription DateTime  @map("date_souscription") @db.Date
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  serverSeq        BigInt    @map("server_seq")
+  version          Int       @default(1)
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  owner    Agent     @relation(fields: [ownerId], references: [id])
+  photo    Media     @relation(fields: [photoId], references: [id])
+  contrats Contrat[]
+
+  @@index([ownerId])
+  @@index([ownerId, nom])
+  @@map("membres")
+}
+
+// ───────────────────────── Contrats ─────────────────────────
+
+model Contrat {
+  id                 String          @id @db.Uuid
+  membreId           String          @map("membre_id") @db.Uuid
+  ownerId            String          @map("owner_id") @db.Uuid // dénormalisé (scoping)
+  groupe             Groupe // étiquette d'affichage uniquement ; le comportement vient des paramètres ci-dessous
+  cadence            CadenceCollecte
+  intervalleJours    Int?            @map("intervalle_jours")
+  moisParCycle       Int             @map("mois_par_cycle")
+  misesParMois       Int             @map("mises_par_mois")
+  targetMises        Int             @map("target_mises")
+  miseAmount         BigInt          @map("mise_amount")
+  commissionParMois  Int?            @map("commission_par_mois")
+  commissionParCycle Int?            @map("commission_par_cycle")
+  creditAutorise     Boolean         @default(true) @map("credit_autorise")
+  maxAvances         Int             @default(2) @map("max_avances")
+  startDate          DateTime        @map("start_date") @db.Date
+  endDate            DateTime        @map("end_date") @db.Date
+  statut             StatutContrat   @default(ACTIF)
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  serverSeq          BigInt          @map("server_seq")
+  version            Int             @default(1)
+  deletedAt          DateTime?       @map("deleted_at") @db.Timestamptz(6)
+
+  membre     Membre      @relation(fields: [membreId], references: [id])
+  versements Versement[]
+  avances    Avance[]
+  retraits   Retrait[]
+
+  @@index([membreId])
+  @@index([ownerId, statut])
+  @@map("contrats")
+}
+
+// ───────────────────────── Versements (append-only) ─────────────────────────
+
+model Versement {
+  id              String   @id @db.Uuid
+  contratId       String   @map("contrat_id") @db.Uuid
+  agentId         String   @map("agent_id") @db.Uuid
+  misesCount      Int      @map("mises_count")
+  amount          BigInt
+  paidAt          DateTime @map("paid_at") @db.Timestamptz(6)
+  numeroMiseDebut Int?     @map("numero_mise_debut")
+  numeroMiseFin   Int?     @map("numero_mise_fin")
+  receiptNumber   String?  @unique @map("receipt_number")
+  idempotencyKey  String   @unique @map("idempotency_key") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  serverSeq       BigInt   @map("server_seq")
+
+  contrat Contrat @relation(fields: [contratId], references: [id])
+  agent   Agent   @relation(fields: [agentId], references: [id])
+
+  @@index([contratId, paidAt])
+  @@map("versements")
+}
+
+// ───────────────────────── Avances / crédit (append-only) ─────────────────────────
+
+model Avance {
+  id                String   @id @db.Uuid
+  contratId         String   @map("contrat_id") @db.Uuid
+  agentId           String   @map("agent_id") @db.Uuid
+  rang              Int // 1 ou 2 (≤ contrat.maxAvances)
+  nbMois            Int      @map("nb_mois") // 1..3
+  montant           BigInt // principal versé
+  montantAttenduRef BigInt   @map("montant_attendu_ref")
+  interet           BigInt // = miseAmount / 2 × nbMois
+  dateAvance        DateTime @map("date_avance") @db.Timestamptz(6)
+  receiptNumber     String?  @unique @map("receipt_number")
+  idempotencyKey    String   @unique @map("idempotency_key") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  serverSeq         BigInt   @map("server_seq")
+
+  contrat Contrat @relation(fields: [contratId], references: [id])
+  agent   Agent   @relation(fields: [agentId], references: [id])
+
+  @@index([contratId])
+  @@map("avances")
+}
+
+// ───────────────────────── Retraits (append-only) ─────────────────────────
+
+model Retrait {
+  id                 String      @id @db.Uuid
+  contratId          String      @map("contrat_id") @db.Uuid
+  agentId            String      @map("agent_id") @db.Uuid
+  type               TypeRetrait
+  montantBrut        BigInt      @map("montant_brut")
+  commissionPrelevee BigInt      @map("commission_prelevee")
+  interetDu          BigInt      @default(0) @map("interet_du")
+  montantNet         BigInt      @map("montant_net")
+  dateRetrait        DateTime    @map("date_retrait") @db.Timestamptz(6)
+  receiptNumber      String?     @unique @map("receipt_number")
+  idempotencyKey     String      @unique @map("idempotency_key") @db.Uuid
+  createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  serverSeq          BigInt      @map("server_seq")
+
+  contrat Contrat @relation(fields: [contratId], references: [id])
+  agent   Agent   @relation(fields: [agentId], references: [id])
+
+  @@index([contratId])
+  @@map("retraits")
+}

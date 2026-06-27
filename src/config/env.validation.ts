@@ -9,12 +9,14 @@ import { z } from 'zod';
  */
 export const envSchema = z.object({
   // Application (L0)
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  NODE_ENV: z
+    .enum(['development', 'test', 'production'])
+    .default('development'),
   PORT: z.coerce.number().int().positive().default(3001),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
 
-  // Base de données (L1) — optionnel pour l'instant
-  DATABASE_URL: z.string().url().optional(),
+  // Base de données (L1) — requis
+  DATABASE_URL: z.string().url(),
 
   // Authentification (L2) — optionnel pour l'instant
   JWT_ACCESS_SECRET: z.string().optional(),
@@ -34,7 +36,10 @@ export function validateEnv(config: Record<string, unknown>): Env {
 
   if (!parsed.success) {
     const issues = parsed.error.issues
-      .map((issue) => `  - ${issue.path.join('.') || '(racine)'}: ${issue.message}`)
+      .map(
+        (issue) =>
+          `  - ${issue.path.join('.') || '(racine)'}: ${issue.message}`,
+      )
       .join('\n');
     throw new Error(`Configuration d'environnement invalide :\n${issues}`);
   }
