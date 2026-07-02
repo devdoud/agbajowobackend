@@ -44,4 +44,23 @@ export class ContratsController {
       cursor ? BigInt(cursor) : undefined,
     );
   }
+
+  @Get(':id/avances')
+  avances(@CurrentUser() agent: AuthAgent, @Param('id') id: string) {
+    return this.contrats.historiqueAvances(agent, id);
+  }
+
+  @Get(':id/retraits')
+  retraits(@CurrentUser() agent: AuthAgent, @Param('id') id: string) {
+    return this.contrats.historiqueRetraits(agent, id);
+  }
+
+  @Get(':id/releve')
+  releve(
+    @CurrentUser() agent: AuthAgent,
+    @Param('id') id: string,
+    @Query('mois') mois?: string,
+  ) {
+    return this.contrats.releve(agent, id, mois ? Number(mois) : undefined);
+  }
 }

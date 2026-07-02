@@ -9,6 +9,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { ClockService } from '@/common/clock/clock.service';
 import { commissionDue } from '@/domain/commission';
 import { statutCollecte } from '@/domain/statut';
+import { montantNetAVirer } from '@/domain/releve';
 import { dateEcheance, parametresGroupe } from '@/domain/parametres-groupe';
 import type { AuthAgent } from '@/modules/auth/types';
 import type { SouscrireContratDto } from './dto/souscrire-contrat.dto';
@@ -73,16 +74,18 @@ export class ContratsService {
     });
     if (!contrat) throw new NotFoundException('Contrat introuvable');
 
-    const [versements, avances] = await Promise.all([
+    const [versements, avances, retraits] = await Promise.all([
       this.prisma.versement.findMany({ where: { contratId: id } }),
       this.prisma.avance.findMany({ where: { contratId: id } }),
+      this.prisma.retrait.findMany({ where: { contratId: id } }),
     ]);
 
     const misesVersees = versements.reduce((s, v) => s + v.misesCount, 0);
     const soldeBrut = versements.reduce((s, v) => s + Number(v.amount), 0);
     const interetDu = avances.reduce((s, a) => s + Number(a.interet), 0);
-    // Remboursement des avances géré au lot L7 : ici l'avance reste due en entier.
+    // Remboursement des avances : imputation par période à préciser (Q29).
     const avanceRestante = avances.reduce((s, a) => s + Number(a.montant), 0);
+    const totalRetire = retraits.reduce((s, r) => s + Number(r.montantBrut), 0);
     const miseAmount = Number(contrat.miseAmount);
 
     const commission = commissionDue(
@@ -119,6 +122,8 @@ export class ContratsService {
         commissionDue: commission,
         interetDu,
         avanceRestante,
+        totalRetire,
+        soldeDisponible: soldeBrut - totalRetire,
         soldeNet: soldeBrut - commission - interetDu - avanceRestante,
         progression:
           contrat.targetMises > 0
@@ -158,5 +163,92 @@ export class ContratsService {
       ? data[data.length - 1].serverSeq.toString()
       : null;
     return { data, nextCursor, hasMore };
+  }
+
+  async historiqueAvances(agent: AuthAgent, id: string) {
+    await this.verifierContrat(agent, id);
+    return this.prisma.avance.findMany({
+      where: { contratId: id },
+      orderBy: { serverSeq: 'asc' },
+    });
+  }
+
+  async historiqueRetraits(agent: AuthAgent, id: string) {
+    await this.verifierContrat(agent, id);
+    return this.prisma.retrait.findMany({
+      where: { contratId: id },
+      orderBy: { serverSeq: 'asc' },
+    });
+  }
+
+  /**
+   * Relevé de période (règlement du livret). Mensuel pour G1 (bloc structurel),
+   * annuel pour G2. Ne comptabilise ici que cotisation et commission ; l'imputation
+   * des avances/intérêts par période reste à préciser (Q29).
+   */
+  async releve(agent: AuthAgent, id: string, moisParam?: number) {
+    const contrat = await this.prisma.contrat.findFirst({
+      where: { id, deletedAt: null, ...this.filtreProprietaire(agent) },
+    });
+    if (!contrat) throw new NotFoundException('Contrat introuvable');
+
+    const agg = await this.prisma.versement.aggregate({
+      where: { contratId: id },
+      _sum: { misesCount: true },
+    });
+    const cumul = agg._sum.misesCount ?? 0;
+    const miseAmount = Number(contrat.miseAmount);
+
+    if (contrat.commissionParCycle != null) {
+      // Groupe 2 : règlement annuel (tout le cycle).
+      const totalCotisation = cumul * miseAmount;
+      const commission =
+        cumul > 0 ? contrat.commissionParCycle * miseAmount : 0;
+      return this.formatReleve('cycle', totalCotisation, commission);
+    }
+
+    // Groupe 1 : règlement mensuel (bloc de misesParMois).
+    const moisCourant = Math.max(1, Math.ceil(cumul / contrat.misesParMois));
+    const mois = Math.min(
+      Math.max(moisParam ?? moisCourant, 1),
+      contrat.moisParCycle,
+    );
+    const debut = (mois - 1) * contrat.misesParMois;
+    const misesDansBloc = Math.min(
+      contrat.misesParMois,
+      Math.max(0, cumul - debut),
+    );
+    const totalCotisation = misesDansBloc * miseAmount;
+    const commission =
+      misesDansBloc > 0 ? (contrat.commissionParMois ?? 0) * miseAmount : 0;
+    return this.formatReleve(`mois-${mois}`, totalCotisation, commission, mois);
+  }
+
+  private formatReleve(
+    periode: string,
+    totalCotisation: number,
+    commission: number,
+    mois?: number,
+  ) {
+    const composantes = {
+      totalCotisation,
+      commission,
+      avanceImputee: 0,
+      interet: 0,
+    };
+    return {
+      periode,
+      ...(mois !== undefined ? { mois } : {}),
+      ...composantes,
+      montantNetAVirer: montantNetAVirer(composantes),
+    };
+  }
+
+  private async verifierContrat(agent: AuthAgent, id: string): Promise<void> {
+    const contrat = await this.prisma.contrat.findFirst({
+      where: { id, deletedAt: null, ...this.filtreProprietaire(agent) },
+      select: { id: true },
+    });
+    if (!contrat) throw new NotFoundException('Contrat introuvable');
   }
 }

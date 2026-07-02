@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { plageMises } from '@/domain/mises';
+import { prochainRecu } from '@/common/receipt';
 import type { AuthAgent } from '@/modules/auth/types';
 import type { EncaisserDto } from './dto/encaisser.dto';
 
@@ -71,7 +72,7 @@ export class CollecteService {
             paidAt: dto.paidAt ?? new Date(),
             numeroMiseDebut: plage.debut,
             numeroMiseFin: plage.fin,
-            receiptNumber: await this.prochainRecu(tx),
+            receiptNumber: await prochainRecu(tx),
             idempotencyKey: id,
           },
         });
@@ -97,15 +98,5 @@ export class CollecteService {
       }
       throw error;
     }
-  }
-
-  private async prochainRecu(tx: Prisma.TransactionClient): Promise<string> {
-    const rows = await tx.$queryRaw<{ nextval: bigint }[]>`
-      SELECT nextval('receipt_seq')
-    `;
-    const n = rows[0].nextval.toString().padStart(5, '0');
-    const d = new Date();
-    const date = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-    return `REC-${date}-${n}`;
   }
 }
