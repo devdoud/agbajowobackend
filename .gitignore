@@ -29,5 +29,5 @@ postgres-data/
 caddy-data/
 caddy-config/
 
-# Médias uploadés (stockés hors dépôt)
-media/
+# Médias uploadés (stockés hors dépôt) — ancré à la racine pour ne pas exclure src/modules/media/
+/media/
