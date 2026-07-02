@@ -14,6 +14,7 @@ import { CollecteModule } from './modules/collecte/collecte.module';
 import { AvancesModule } from './modules/avances/avances.module';
 import { RetraitsModule } from './modules/retraits/retraits.module';
 import { SyncModule } from './modules/sync/sync.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { SyncModule } from './modules/sync/sync.module';
     AvancesModule,
     RetraitsModule,
     SyncModule,
+    DashboardModule,
     HealthModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
