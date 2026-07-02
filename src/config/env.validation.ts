@@ -23,6 +23,10 @@ export const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(16),
   JWT_ACCESS_TTL: z.coerce.number().int().positive().default(900),
   JWT_REFRESH_TTL: z.coerce.number().int().positive().default(2592000),
+
+  // Médias / photos (L4)
+  MEDIA_DIR: z.string().default('./media'),
+  MEDIA_MAX_BYTES: z.coerce.number().int().positive().default(2_097_152), // 2 Mo
 });
 
 export type Env = z.infer<typeof envSchema>;

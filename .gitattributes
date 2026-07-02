@@ -1,0 +1,5 @@
+# Normalise les fins de ligne en LF dans le dépôt (évite le bruit CRLF sous Windows).
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary

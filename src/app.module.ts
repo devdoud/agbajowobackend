@@ -5,6 +5,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ClockModule } from './common/clock/clock.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { MediaModule } from './modules/media/media.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { AuthModule } from './modules/auth/auth.module';
     PrismaModule,
     ClockModule,
     AuthModule,
+    MediaModule,
     HealthModule,
   ],
 })

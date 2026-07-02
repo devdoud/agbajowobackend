@@ -28,3 +28,6 @@ Thumbs.db
 postgres-data/
 caddy-data/
 caddy-config/
+
+# Médias uploadés (stockés hors dépôt)
+media/

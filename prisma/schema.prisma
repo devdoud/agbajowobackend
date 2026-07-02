@@ -96,7 +96,7 @@ model Media {
   largeur      Int?
   hauteur      Int?
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  serverSeq    BigInt    @map("server_seq")
+  serverSeq    BigInt    @default(dbgenerated("nextval('sync_seq'::regclass)")) @map("server_seq")
 
   membres Membre[]
 
@@ -122,7 +122,7 @@ model Membre {
   dateSouscription DateTime  @map("date_souscription") @db.Date
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  serverSeq        BigInt    @map("server_seq")
+  serverSeq        BigInt    @default(dbgenerated("nextval('sync_seq'::regclass)")) @map("server_seq")
   version          Int       @default(1)
   deletedAt        DateTime? @map("deleted_at") @db.Timestamptz(6)
 
@@ -157,7 +157,7 @@ model Contrat {
   statut             StatutContrat   @default(ACTIF)
   createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
-  serverSeq          BigInt          @map("server_seq")
+  serverSeq          BigInt          @default(dbgenerated("nextval('sync_seq'::regclass)")) @map("server_seq")
   version            Int             @default(1)
   deletedAt          DateTime?       @map("deleted_at") @db.Timestamptz(6)
 
@@ -185,7 +185,7 @@ model Versement {
   receiptNumber   String?  @unique @map("receipt_number")
   idempotencyKey  String   @unique @map("idempotency_key") @db.Uuid
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  serverSeq       BigInt   @map("server_seq")
+  serverSeq       BigInt   @default(dbgenerated("nextval('sync_seq'::regclass)")) @map("server_seq")
 
   contrat Contrat @relation(fields: [contratId], references: [id])
   agent   Agent   @relation(fields: [agentId], references: [id])
@@ -209,7 +209,7 @@ model Avance {
   receiptNumber     String?  @unique @map("receipt_number")
   idempotencyKey    String   @unique @map("idempotency_key") @db.Uuid
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  serverSeq         BigInt   @map("server_seq")
+  serverSeq         BigInt   @default(dbgenerated("nextval('sync_seq'::regclass)")) @map("server_seq")
 
   contrat Contrat @relation(fields: [contratId], references: [id])
   agent   Agent   @relation(fields: [agentId], references: [id])
@@ -233,7 +233,7 @@ model Retrait {
   receiptNumber      String?     @unique @map("receipt_number")
   idempotencyKey     String      @unique @map("idempotency_key") @db.Uuid
   createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
-  serverSeq          BigInt      @map("server_seq")
+  serverSeq          BigInt      @default(dbgenerated("nextval('sync_seq'::regclass)")) @map("server_seq")
 
   contrat Contrat @relation(fields: [contratId], references: [id])
   agent   Agent   @relation(fields: [agentId], references: [id])

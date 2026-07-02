@@ -3,9 +3,9 @@
  * Crée un agent, deux membres (Groupe 1 et Groupe 2) avec photo factice,
  * leurs contrats et quelques versements.
  *
- * NB : le `passwordHash` est un placeholder de développement ; le hachage réel
- * (Argon2) arrive au lot L2. Les `id` sont des UUID (v4 ici, suffisant pour le seed)
- * et les `serverSeq`/`numeroMembre` sont attribués manuellement (rôle du serveur).
+ * Les `id` sont des UUID (v4 ici, suffisant pour le seed). Le `serverSeq` est attribué
+ * automatiquement par la séquence Postgres `sync_seq` (défaut DB). Le `numeroMembre` est
+ * posé manuellement ici (il sera attribué par le serveur à la synchro en usage réel).
  */
 import { randomUUID } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
@@ -16,9 +16,6 @@ const prisma = new PrismaClient();
 /** Identifiants de l'agent de démonstration (développement uniquement). */
 const DEMO_TELEPHONE = '22990000000';
 const DEMO_PASSWORD = 'Password123!';
-
-let seq = 0n;
-const nextSeq = () => (seq += 1n);
 
 function addDays(date: Date, days: number): Date {
   const d = new Date(date);
@@ -59,17 +56,13 @@ async function main() {
         mime: 'image/jpeg',
         tailleOctets: 102400,
         checksum: `sha256:demo-${photo1Id}`,
-        chemin: `/media/${photo1Id}.jpg`,
-        serverSeq: nextSeq(),
-      },
+        chemin: `/media/${photo1Id}.jpg`,      },
       {
         id: photo2Id,
         mime: 'image/jpeg',
         tailleOctets: 98304,
         checksum: `sha256:demo-${photo2Id}`,
-        chemin: `/media/${photo2Id}.jpg`,
-        serverSeq: nextSeq(),
-      },
+        chemin: `/media/${photo2Id}.jpg`,      },
     ],
   });
 
@@ -90,9 +83,7 @@ async function main() {
       arrondissement: '1er',
       commune: 'Cotonou',
       photoId: photo1Id,
-      dateSouscription: new Date('2026-01-01'),
-      serverSeq: nextSeq(),
-    },
+      dateSouscription: new Date('2026-01-01'),    },
   });
 
   const startG1 = new Date('2026-01-01');
@@ -112,9 +103,7 @@ async function main() {
       commissionParMois: 1,
       commissionParCycle: null,
       startDate: startG1,
-      endDate: addDays(startG1, 372),
-      serverSeq: nextSeq(),
-    },
+      endDate: addDays(startG1, 372),    },
   });
 
   // Quelques versements pour le membre 1
@@ -130,9 +119,7 @@ async function main() {
         numeroMiseDebut: 1,
         numeroMiseFin: 1,
         receiptNumber: 'REC-20260102-00001',
-        idempotencyKey: randomUUID(),
-        serverSeq: nextSeq(),
-      },
+        idempotencyKey: randomUUID(),      },
       {
         id: randomUUID(),
         contratId: contrat1Id,
@@ -143,9 +130,7 @@ async function main() {
         numeroMiseDebut: 2,
         numeroMiseFin: 4,
         receiptNumber: 'REC-20260103-00002',
-        idempotencyKey: randomUUID(),
-        serverSeq: nextSeq(),
-      },
+        idempotencyKey: randomUUID(),      },
     ],
   });
 
@@ -166,9 +151,7 @@ async function main() {
       arrondissement: '5e',
       commune: 'Cotonou',
       photoId: photo2Id,
-      dateSouscription: new Date('2026-01-05'),
-      serverSeq: nextSeq(),
-    },
+      dateSouscription: new Date('2026-01-05'),    },
   });
 
   const startG2 = new Date('2026-01-05');
@@ -188,9 +171,7 @@ async function main() {
       commissionParMois: null,
       commissionParCycle: 3,
       startDate: startG2,
-      endDate: addDays(startG2, 96 * 5),
-      serverSeq: nextSeq(),
-    },
+      endDate: addDays(startG2, 96 * 5),    },
   });
 
   await prisma.versement.create({
@@ -204,9 +185,7 @@ async function main() {
       numeroMiseDebut: 1,
       numeroMiseFin: 1,
       receiptNumber: 'REC-20260105-00003',
-      idempotencyKey: randomUUID(),
-      serverSeq: nextSeq(),
-    },
+      idempotencyKey: randomUUID(),    },
   });
 
   console.log('✅ Seed terminé : 1 agent, 2 membres (G1 + G2), 2 contrats, 3 versements.');
