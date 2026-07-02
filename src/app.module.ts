@@ -6,6 +6,8 @@ import { ClockModule } from './common/clock/clock.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { MediaModule } from './modules/media/media.module';
+import { MembresModule } from './modules/membres/membres.module';
+import { ContratsModule } from './modules/contrats/contrats.module';
 
 @Module({
   imports: [
@@ -17,6 +19,8 @@ import { MediaModule } from './modules/media/media.module';
     ClockModule,
     AuthModule,
     MediaModule,
+    MembresModule,
+    ContratsModule,
     HealthModule,
   ],
 })

@@ -23,6 +23,14 @@ function addDays(date: Date, days: number): Date {
   return d;
 }
 
+/** Numéro de membre suivant, tiré de la séquence Postgres (comme le fait le serveur). */
+async function prochainNumeroMembre(): Promise<string> {
+  const rows = await prisma.$queryRaw<{ nextval: bigint }[]>`
+    SELECT nextval('membre_seq')
+  `;
+  return `MBR-${rows[0].nextval.toString().padStart(5, '0')}`;
+}
+
 async function main() {
   // Nettoyage (ordre dépendances : enfants d'abord) pour un seed ré-exécutable.
   await prisma.refreshToken.deleteMany();
@@ -33,6 +41,10 @@ async function main() {
   await prisma.membre.deleteMany();
   await prisma.media.deleteMany();
   await prisma.agent.deleteMany();
+
+  // Réinitialise les séquences pour un seed déterministe et cohérent.
+  await prisma.$executeRawUnsafe('ALTER SEQUENCE sync_seq RESTART WITH 1');
+  await prisma.$executeRawUnsafe('ALTER SEQUENCE membre_seq RESTART WITH 1');
 
   // ── Agent ────────────────────────────────────────────────
   const agentId = randomUUID();
@@ -72,7 +84,7 @@ async function main() {
     data: {
       id: membre1Id,
       ownerId: agentId,
-      numeroMembre: 'MBR-00001',
+      numeroMembre: await prochainNumeroMembre(),
       nom: 'Traoré',
       prenoms: 'Moussa',
       telephone: '22970000001',
@@ -140,7 +152,7 @@ async function main() {
     data: {
       id: membre2Id,
       ownerId: agentId,
-      numeroMembre: 'MBR-00002',
+      numeroMembre: await prochainNumeroMembre(),
       nom: 'Koné',
       prenoms: 'Aminata',
       telephone: '22970000002',
