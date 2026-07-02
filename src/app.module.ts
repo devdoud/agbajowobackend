@@ -8,6 +8,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { MediaModule } from './modules/media/media.module';
 import { MembresModule } from './modules/membres/membres.module';
 import { ContratsModule } from './modules/contrats/contrats.module';
+import { CollecteModule } from './modules/collecte/collecte.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ContratsModule } from './modules/contrats/contrats.module';
     MediaModule,
     MembresModule,
     ContratsModule,
+    CollecteModule,
     HealthModule,
   ],
 })

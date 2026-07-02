@@ -45,6 +45,7 @@ async function main() {
   // Réinitialise les séquences pour un seed déterministe et cohérent.
   await prisma.$executeRawUnsafe('ALTER SEQUENCE sync_seq RESTART WITH 1');
   await prisma.$executeRawUnsafe('ALTER SEQUENCE membre_seq RESTART WITH 1');
+  await prisma.$executeRawUnsafe('ALTER SEQUENCE receipt_seq RESTART WITH 1');
 
   // ── Agent ────────────────────────────────────────────────
   const agentId = randomUUID();
