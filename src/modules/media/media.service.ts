@@ -11,6 +11,7 @@ import { join, resolve } from 'node:path';
 import type { Media } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import type { Env } from '@/config/env.validation';
+import type { AuthAgent } from '@/modules/auth/types';
 
 /** Extensions de fichier autorisées, indexées par type MIME. */
 const MIMES_AUTORISES: Record<string, string> = {
@@ -91,10 +92,24 @@ export class MediaService {
     });
   }
 
-  /** Renvoie l'enregistrement + le binaire d'un média. */
-  async lireFichier(id: string): Promise<{ media: Media; buffer: Buffer }> {
+  /**
+   * Renvoie l'enregistrement + le binaire d'un média. Un AGENT ne peut lire que les
+   * photos de ses propres membres (superviseur/admin : accès global).
+   */
+  async lireFichier(
+    id: string,
+    agent: AuthAgent,
+  ): Promise<{ media: Media; buffer: Buffer }> {
     const media = await this.prisma.media.findUnique({ where: { id } });
     if (!media) throw new NotFoundException('Média introuvable');
+
+    if (agent.role === 'AGENT') {
+      const membre = await this.prisma.membre.findFirst({
+        where: { photoId: id, ownerId: agent.id },
+        select: { id: true },
+      });
+      if (!membre) throw new NotFoundException('Média introuvable');
+    }
 
     const chemin = join(this.dossier, media.chemin);
     if (!existsSync(chemin)) {

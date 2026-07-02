@@ -85,6 +85,14 @@ export class AuthService {
     const refreshTtl = this.config.get('JWT_REFRESH_TTL', { infer: true });
     const jti = randomUUID();
 
+    // Housekeeping : purge des jetons expirés ou révoqués de cet agent.
+    await this.prisma.refreshToken.deleteMany({
+      where: {
+        agentId: agent.id,
+        OR: [{ expiresAt: { lt: new Date() } }, { revokedAt: { not: null } }],
+      },
+    });
+
     await this.prisma.refreshToken.create({
       data: {
         id: jti,

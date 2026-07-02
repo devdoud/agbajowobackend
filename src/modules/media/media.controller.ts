@@ -12,6 +12,8 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { MediaService } from './media.service';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import type { AuthAgent } from '@/modules/auth/types';
 
 // Garde-fou dur au niveau multer (la validation fine se fait dans le service).
 const LIMITE_DURE_OCTETS = 5 * 1024 * 1024;
@@ -49,8 +51,12 @@ export class MediaController {
   }
 
   @Get(':id')
-  async servir(@Param('id') id: string, @Res() res: Response): Promise<void> {
-    const { media, buffer } = await this.media.lireFichier(id);
+  async servir(
+    @CurrentUser() agent: AuthAgent,
+    @Param('id') id: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { media, buffer } = await this.media.lireFichier(id, agent);
     res.setHeader('Content-Type', media.mime);
     res.setHeader('Cache-Control', 'private, max-age=86400');
     res.send(buffer);
