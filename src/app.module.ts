@@ -11,6 +11,7 @@ import { ContratsModule } from './modules/contrats/contrats.module';
 import { CollecteModule } from './modules/collecte/collecte.module';
 import { AvancesModule } from './modules/avances/avances.module';
 import { RetraitsModule } from './modules/retraits/retraits.module';
+import { SyncModule } from './modules/sync/sync.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { RetraitsModule } from './modules/retraits/retraits.module';
     CollecteModule,
     AvancesModule,
     RetraitsModule,
+    SyncModule,
     HealthModule,
   ],
 })
