@@ -9,8 +9,13 @@
  */
 import { randomUUID } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
+import { hash } from '@node-rs/argon2';
 
 const prisma = new PrismaClient();
+
+/** Identifiants de l'agent de démonstration (développement uniquement). */
+const DEMO_TELEPHONE = '22990000000';
+const DEMO_PASSWORD = 'Password123!';
 
 let seq = 0n;
 const nextSeq = () => (seq += 1n);
@@ -23,6 +28,7 @@ function addDays(date: Date, days: number): Date {
 
 async function main() {
   // Nettoyage (ordre dépendances : enfants d'abord) pour un seed ré-exécutable.
+  await prisma.refreshToken.deleteMany();
   await prisma.retrait.deleteMany();
   await prisma.avance.deleteMany();
   await prisma.versement.deleteMany();
@@ -37,8 +43,8 @@ async function main() {
     data: {
       id: agentId,
       nom: 'Agent Terrain',
-      telephone: '22990000000',
-      passwordHash: 'dev-placeholder-non-hache', // remplacé par Argon2 au lot L2
+      telephone: DEMO_TELEPHONE,
+      passwordHash: await hash(DEMO_PASSWORD),
       role: 'ADMIN',
     },
   });
@@ -204,6 +210,7 @@ async function main() {
   });
 
   console.log('✅ Seed terminé : 1 agent, 2 membres (G1 + G2), 2 contrats, 3 versements.');
+  console.log(`   Connexion démo → téléphone: ${DEMO_TELEPHONE} · mot de passe: ${DEMO_PASSWORD}`);
 }
 
 main()

@@ -1,4 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
+import { Public } from '@/common/decorators/public.decorator';
 
 /**
  * Endpoint de santé public, utilisé pour le monitoring du VPS et les healthchecks
@@ -6,6 +7,7 @@ import { Controller, Get } from '@nestjs/common';
  */
 @Controller('health')
 export class HealthController {
+  @Public()
   @Get()
   check() {
     return {

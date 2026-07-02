@@ -60,12 +60,28 @@ model Agent {
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  membres    Membre[]
-  versements Versement[]
-  avances    Avance[]
-  retraits   Retrait[]
+  membres       Membre[]
+  versements    Versement[]
+  avances       Avance[]
+  retraits      Retrait[]
+  refreshTokens RefreshToken[]
 
   @@map("agents")
+}
+
+// ───────────────────────── Jetons de rafraîchissement ─────────────────────────
+
+model RefreshToken {
+  id        String    @id @db.Uuid
+  agentId   String    @map("agent_id") @db.Uuid
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([agentId])
+  @@map("refresh_tokens")
 }
 
 // ───────────────────────── Médias (photos d'identité) ─────────────────────────

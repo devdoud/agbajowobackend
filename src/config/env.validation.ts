@@ -18,9 +18,9 @@ export const envSchema = z.object({
   // Base de données (L1) — requis
   DATABASE_URL: z.string().url(),
 
-  // Authentification (L2) — optionnel pour l'instant
-  JWT_ACCESS_SECRET: z.string().optional(),
-  JWT_REFRESH_SECRET: z.string().optional(),
+  // Authentification (L2) — requis
+  JWT_ACCESS_SECRET: z.string().min(16),
+  JWT_REFRESH_SECRET: z.string().min(16),
   JWT_ACCESS_TTL: z.coerce.number().int().positive().default(900),
   JWT_REFRESH_TTL: z.coerce.number().int().positive().default(2592000),
 });
