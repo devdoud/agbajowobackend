@@ -1,0 +1,9 @@
+# Reverse-proxy + HTTPS automatique (Let's Encrypt) vers l'API.
+# {$DOMAIN} est fourni par docker-compose (variable DOMAIN du .env).
+# Prérequis : le domaine pointe vers le serveur, ports 80/443 ouverts.
+#
+# Pour un test local sans domaine/TLS, remplacer {$DOMAIN} par :80
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy api:3001
+}
