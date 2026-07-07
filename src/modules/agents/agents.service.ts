@@ -91,6 +91,11 @@ export class AgentsService {
         'Vous ne pouvez pas désactiver votre propre compte.',
       );
     }
+    if (id === acteur.id && dto.role && dto.role !== cible.role) {
+      throw new ForbiddenException(
+        'Vous ne pouvez pas modifier votre propre rôle.',
+      );
+    }
 
     const data: Prisma.AgentUpdateInput = {};
     let motDePasseTemporaire: string | undefined;
