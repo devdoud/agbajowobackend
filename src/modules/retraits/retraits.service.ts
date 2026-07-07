@@ -8,7 +8,12 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { prochainRecu } from '@/common/receipt';
 import { commissionDue } from '@/domain/commission';
-import { calculRetraitNet } from '@/domain/retrait';
+import {
+  calculerRetraitPartiel,
+  calculerRetraitTotal,
+  recuperableNet,
+  type EtatRetrait,
+} from '@/domain/retrait';
 import type { AuthAgent } from '@/modules/auth/types';
 import type { EffectuerRetraitDto } from './dto/effectuer-retrait.dto';
 
@@ -21,11 +26,11 @@ export class RetraitsService {
   }
 
   /**
-   * Effectue un retrait.
-   *  - TOTAL : clôture anticipée ; le membre reçoit le solde net de la commission
-   *    due, de l'intérêt dû et de l'avance restante (domaine calculRetraitNet).
-   *  - PARTIEL : retire un montant du solde disponible ; la commission/intérêt sont
-   *    réglés à la clôture (imputation des périodes = Q29, à préciser).
+   * Effectue un retrait. La commission (et l'intérêt) restant dus sont prélevés en
+   * priorité sur les cotisations (R2/R9), une seule fois.
+   *  - TOTAL : clôture anticipée ; le membre reçoit le net récupérable.
+   *  - PARTIEL : le membre reçoit le montant demandé (≤ récupérable) ; la commission/
+   *    intérêt restants sont prélevés d'abord.
    */
   async effectuer(agent: AuthAgent, dto: EffectuerRetraitDto) {
     const id = dto.id ?? randomUUID();
@@ -60,14 +65,15 @@ export class RetraitsService {
           tx.avance.findMany({ where: { contratId: contrat.id } }),
           tx.retrait.aggregate({
             where: { contratId: contrat.id },
-            _sum: { montantBrut: true },
+            _sum: { montantBrut: true, commissionPrelevee: true, interetDu: true },
           }),
         ]);
 
         const soldeBrut = Number(vAgg._sum.amount ?? 0n);
         const misesVersees = vAgg._sum.misesCount ?? 0;
         const dejaRetire = Number(rAgg._sum.montantBrut ?? 0n);
-        const soldeDisponible = soldeBrut - dejaRetire;
+        const commissionDejaPrelevee = Number(rAgg._sum.commissionPrelevee ?? 0n);
+        const interetDejaPreleve = Number(rAgg._sum.interetDu ?? 0n);
         const miseAmount = Number(contrat.miseAmount);
         const commission = commissionDue(
           {
@@ -85,34 +91,32 @@ export class RetraitsService {
           0,
         );
 
+        const etat: EtatRetrait = {
+          brutDisponible: soldeBrut - dejaRetire,
+          commissionRestante: Math.max(0, commission - commissionDejaPrelevee),
+          interetRestant: Math.max(0, interetDu - interetDejaPreleve),
+          avanceRestante,
+        };
+
         let montantBrut: number;
         let montantNet: number;
         let commissionPrelevee: number;
         let interetPreleve: number;
 
         if (dto.type === 'TOTAL') {
-          montantBrut = soldeDisponible;
-          const res = calculRetraitNet({
-            soldeBrut: soldeDisponible,
-            commissionDue: commission,
-            interetDu,
-            avanceRestante,
-          });
-          montantNet = res.montantNet;
-          commissionPrelevee = commission;
-          interetPreleve = interetDu;
+          ({ montantBrut, montantNet, commissionPrelevee, interetPreleve } =
+            calculerRetraitTotal(etat));
         } else {
           const montant = dto.montant ?? 0;
-          if (montant > soldeDisponible) {
+          const plafond = recuperableNet(etat);
+          if (montant > plafond) {
             throw new UnprocessableEntityException({
               code: 'BUSINESS_RULE',
-              message: `Montant supérieur au solde disponible (${soldeDisponible} FCFA).`,
+              message: `Montant supérieur au récupérable (${plafond} FCFA).`,
             });
           }
-          montantBrut = montant;
-          montantNet = montant;
-          commissionPrelevee = 0;
-          interetPreleve = 0;
+          ({ montantBrut, montantNet, commissionPrelevee, interetPreleve } =
+            calculerRetraitPartiel(etat, montant));
         }
 
         const retrait = await tx.retrait.create({
