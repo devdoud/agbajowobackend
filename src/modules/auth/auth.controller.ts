@@ -6,6 +6,10 @@ import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe';
 import { loginSchema, type LoginDto } from './dto/login.dto';
 import { refreshSchema, type RefreshDto } from './dto/refresh.dto';
+import {
+  changePasswordSchema,
+  type ChangePasswordDto,
+} from './dto/change-password.dto';
 import type { AuthAgent } from './types';
 
 @Controller('auth')
@@ -36,5 +40,18 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() agent: AuthAgent) {
     return this.auth.me(agent.id);
+  }
+
+  @Post('change-password')
+  @HttpCode(200)
+  changePassword(
+    @CurrentUser() agent: AuthAgent,
+    @Body(new ZodValidationPipe(changePasswordSchema)) dto: ChangePasswordDto,
+  ) {
+    return this.auth.changePassword(
+      agent.id,
+      dto.currentPassword,
+      dto.newPassword,
+    );
   }
 }

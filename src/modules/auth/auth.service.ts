@@ -74,10 +74,46 @@ export class AuthService {
   async me(agentId: string) {
     const agent = await this.prisma.agent.findUnique({
       where: { id: agentId },
-      select: { id: true, nom: true, telephone: true, role: true },
+      select: {
+        id: true,
+        nom: true,
+        telephone: true,
+        role: true,
+        mustChangePassword: true,
+      },
     });
     if (!agent) throw new UnauthorizedException();
     return agent;
+  }
+
+  /** L'agent change son propre mot de passe (obligatoire après création/réinit). */
+  async changePassword(
+    agentId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ ok: true }> {
+    const agent = await this.prisma.agent.findFirst({
+      where: { id: agentId, actif: true, deletedAt: null },
+    });
+    const ok = agent
+      ? await verify(agent.passwordHash, currentPassword).catch(() => false)
+      : false;
+    if (!agent || !ok) {
+      throw new UnauthorizedException('Mot de passe actuel invalide');
+    }
+    await this.prisma.agent.update({
+      where: { id: agent.id },
+      data: {
+        passwordHash: await hash(newPassword),
+        mustChangePassword: false,
+      },
+    });
+    // Révoque toutes les sessions existantes par sécurité.
+    await this.prisma.refreshToken.updateMany({
+      where: { agentId: agent.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return { ok: true };
   }
 
   private async issueTokens(agent: Agent) {
@@ -133,6 +169,7 @@ export class AuthService {
         nom: agent.nom,
         telephone: agent.telephone,
         role: agent.role,
+        mustChangePassword: agent.mustChangePassword,
       },
     };
   }

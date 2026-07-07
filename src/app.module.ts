@@ -8,6 +8,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ClockModule } from './common/clock/clock.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { AgentsModule } from './modules/agents/agents.module';
 import { MediaModule } from './modules/media/media.module';
 import { MembresModule } from './modules/membres/membres.module';
 import { ContratsModule } from './modules/contrats/contrats.module';
@@ -27,6 +28,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     PrismaModule,
     ClockModule,
     AuthModule,
+    AgentsModule,
     MediaModule,
     MembresModule,
     ContratsModule,
