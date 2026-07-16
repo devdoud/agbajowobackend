@@ -184,6 +184,25 @@ export class SyncService {
     if (entrant < existant.updatedAt.getTime()) {
       return existant;
     }
+    // Intégrité du grand livre : les paramètres financiers sont verrouillés dès qu'il
+    // existe un mouvement (versement/avance/retrait). On accepte un push identique
+    // (re-synchro) mais on rejette toute modification.
+    const mouvements =
+      (await this.prisma.versement.count({ where: { contratId: c.id } })) +
+      (await this.prisma.avance.count({ where: { contratId: c.id } })) +
+      (await this.prisma.retrait.count({ where: { contratId: c.id } }));
+    if (mouvements > 0) {
+      const inchange =
+        existant.groupe === c.groupe &&
+        Number(existant.miseAmount) === c.miseAmount &&
+        existant.startDate.getTime() === new Date(c.startDate).getTime();
+      if (!inchange) {
+        throw new Error(
+          'Contrat avec mouvements : paramètres verrouillés (clôturer et re-souscrire).',
+        );
+      }
+      return existant;
+    }
     const p = parametresGroupe(c.groupe);
     return this.prisma.contrat.update({
       where: { id: c.id },
