@@ -79,6 +79,7 @@ export class AuthService {
         nom: true,
         telephone: true,
         role: true,
+        numeroAgent: true,
         mustChangePassword: true,
       },
     });
@@ -169,6 +170,7 @@ export class AuthService {
         nom: agent.nom,
         telephone: agent.telephone,
         role: agent.role,
+        numeroAgent: agent.numeroAgent,
         mustChangePassword: agent.mustChangePassword,
       },
     };

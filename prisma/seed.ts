@@ -46,6 +46,8 @@ async function main() {
   await prisma.$executeRawUnsafe('ALTER SEQUENCE sync_seq RESTART WITH 1');
   await prisma.$executeRawUnsafe('ALTER SEQUENCE membre_seq RESTART WITH 1');
   await prisma.$executeRawUnsafe('ALTER SEQUENCE receipt_seq RESTART WITH 1');
+  // L'agent démo prend le n° 1 ; la séquence démarre à 2 pour les agents suivants.
+  await prisma.$executeRawUnsafe('ALTER SEQUENCE agent_seq RESTART WITH 2');
 
   // ── Agent ────────────────────────────────────────────────
   const agentId = randomUUID();
@@ -56,6 +58,7 @@ async function main() {
       telephone: DEMO_TELEPHONE,
       passwordHash: await hash(DEMO_PASSWORD),
       role: 'ADMIN',
+      numeroAgent: 1,
     },
   });
 
@@ -86,6 +89,7 @@ async function main() {
       id: membre1Id,
       ownerId: agentId,
       numeroMembre: await prochainNumeroMembre(),
+      codeMembre: '1-001',
       nom: 'Houngbédji',
       prenoms: 'Codjo',
       telephone: '22970000001',
@@ -154,6 +158,7 @@ async function main() {
       id: membre2Id,
       ownerId: agentId,
       numeroMembre: await prochainNumeroMembre(),
+      codeMembre: '1-002',
       nom: 'Aïvo',
       prenoms: 'Fifamè',
       telephone: '22970000002',

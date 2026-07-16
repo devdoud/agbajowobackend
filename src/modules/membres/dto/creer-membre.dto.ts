@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const creerMembreSchema = z.object({
   id: z.string().uuid().optional(),
+  codeMembre: z.string().min(1).nullish(),
   nom: z.string().min(2),
   prenoms: z.string().min(2),
   profession: z.string().min(1),

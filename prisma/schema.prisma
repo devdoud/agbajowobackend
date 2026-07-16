@@ -55,6 +55,8 @@ model Agent {
   telephone    String    @unique
   passwordHash String    @map("password_hash")
   role         RoleAgent @default(AGENT)
+  // Petit numéro unique servant de préfixe aux codes membres (ex. « 1 » → « 1-014 »).
+  numeroAgent  Int?      @unique @map("numero_agent")
   actif        Boolean   @default(true)
   // Vrai après création/réinitialisation par un superviseur : l'agent doit
   // changer son mot de passe à la prochaine connexion.
@@ -111,7 +113,8 @@ model Media {
 model Membre {
   id               String    @id @db.Uuid
   ownerId          String    @map("owner_id") @db.Uuid
-  numeroMembre     String?   @unique @map("numero_membre") // attribué serveur
+  numeroMembre     String?   @unique @map("numero_membre") // attribué serveur (registre officiel)
+  codeMembre       String?   @unique @map("code_membre") // code court client « ⟨agent⟩-⟨seq⟩ »
   nom              String
   prenoms          String
   telephone        String?

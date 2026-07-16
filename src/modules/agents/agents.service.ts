@@ -18,6 +18,7 @@ const CHAMPS_PUBLICS = {
   nom: true,
   telephone: true,
   role: true,
+  numeroAgent: true,
   actif: true,
   mustChangePassword: true,
   createdAt: true,
@@ -26,6 +27,14 @@ const CHAMPS_PUBLICS = {
 @Injectable()
 export class AgentsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /** Prochain numéro d'agent (préfixe des codes membres), tiré de la séquence Postgres. */
+  private async prochainNumeroAgent(): Promise<number> {
+    const rows = await this.prisma.$queryRaw<{ nextval: bigint }[]>`
+      SELECT nextval('agent_seq')
+    `;
+    return Number(rows[0].nextval);
+  }
 
   /** Un ADMIN gère tous les rôles ; un SUPERVISEUR ne gère que des comptes AGENT. */
   private assertPeutAttribuerRole(acteur: AuthAgent, role: RoleAgent): void {
@@ -48,6 +57,7 @@ export class AgentsService {
           telephone: dto.telephone,
           passwordHash: await hash(motDePasse),
           role: dto.role,
+          numeroAgent: await this.prochainNumeroAgent(),
           mustChangePassword: true,
         },
         select: CHAMPS_PUBLICS,

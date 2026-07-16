@@ -55,6 +55,7 @@ export class MembresService {
         id: dto.id ?? randomUUID(),
         ownerId: agent.id,
         numeroMembre: await this.prochainNumero(),
+        codeMembre: dto.codeMembre ?? null,
         nom: dto.nom,
         prenoms: dto.prenoms,
         telephone: dto.telephone ?? null,
@@ -83,6 +84,7 @@ export class MembresService {
         { nom: { contains: options.q, mode: 'insensitive' } },
         { prenoms: { contains: options.q, mode: 'insensitive' } },
         { numeroMembre: { contains: options.q, mode: 'insensitive' } },
+        { codeMembre: { contains: options.q, mode: 'insensitive' } },
         { telephone: { contains: options.q } },
       ];
     }
