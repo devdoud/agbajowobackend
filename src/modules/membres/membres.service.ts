@@ -36,15 +36,18 @@ export class MembresService {
   }
 
   async creer(agent: AuthAgent, dto: CreerMembreDto) {
-    const photo = await this.prisma.media.findUnique({
-      where: { id: dto.photoId },
-    });
-    if (!photo) {
-      throw new BadRequestException({
-        code: 'VALIDATION_ERROR',
-        message:
-          'Photo introuvable : uploader la photo avant de créer le membre.',
+    // La photo est facultative ; si fournie, elle doit avoir été uploadée au préalable.
+    if (dto.photoId) {
+      const photo = await this.prisma.media.findUnique({
+        where: { id: dto.photoId },
       });
+      if (!photo) {
+        throw new BadRequestException({
+          code: 'VALIDATION_ERROR',
+          message:
+            'Photo introuvable : uploader la photo avant de créer le membre.',
+        });
+      }
     }
 
     return this.prisma.membre.create({
@@ -54,14 +57,14 @@ export class MembresService {
         numeroMembre: await this.prochainNumero(),
         nom: dto.nom,
         prenoms: dto.prenoms,
-        telephone: dto.telephone,
-        dateNaissance: dto.dateNaissance,
-        lieuNaissance: dto.lieuNaissance,
+        telephone: dto.telephone ?? null,
+        dateNaissance: dto.dateNaissance ?? null,
+        lieuNaissance: dto.lieuNaissance ?? null,
         profession: dto.profession,
         quartier: dto.quartier,
-        arrondissement: dto.arrondissement,
-        commune: dto.commune,
-        photoId: dto.photoId,
+        arrondissement: dto.arrondissement ?? null,
+        commune: dto.commune ?? null,
+        photoId: dto.photoId ?? null,
         dateSouscription: dto.dateSouscription ?? new Date(),
       },
     });

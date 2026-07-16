@@ -114,14 +114,14 @@ model Membre {
   numeroMembre     String?   @unique @map("numero_membre") // attribué serveur
   nom              String
   prenoms          String
-  telephone        String
-  dateNaissance    DateTime  @map("date_naissance") @db.Date
-  lieuNaissance    String    @map("lieu_naissance")
+  telephone        String?
+  dateNaissance    DateTime? @map("date_naissance") @db.Date
+  lieuNaissance    String?   @map("lieu_naissance")
   profession       String
   quartier         String
-  arrondissement   String
-  commune          String
-  photoId          String    @map("photo_id") @db.Uuid
+  arrondissement   String?
+  commune          String?
+  photoId          String?   @map("photo_id") @db.Uuid
   dateSouscription DateTime  @map("date_souscription") @db.Date
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -130,7 +130,7 @@ model Membre {
   deletedAt        DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   owner    Agent     @relation(fields: [ownerId], references: [id])
-  photo    Media     @relation(fields: [photoId], references: [id])
+  photo    Media?    @relation(fields: [photoId], references: [id])
   contrats Contrat[]
 
   @@index([ownerId])
