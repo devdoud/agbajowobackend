@@ -10,14 +10,13 @@ import {
 } from './dto/modifier-agent.dto';
 import type { AuthAgent } from '@/modules/auth/types';
 
-// Lecture (roster / vue consolidée) : superviseur + admin.
-// Gestion des comptes (création, modification) : admin uniquement.
+// Superviseur + admin. Le superviseur ne voit et ne gère QUE des comptes AGENT
+// (filtrage et contrôles appliqués dans le service) ; l'admin gère tout le monde.
 @Roles('SUPERVISEUR', 'ADMIN')
 @Controller('agents')
 export class AgentsController {
   constructor(private readonly agents: AgentsService) {}
 
-  @Roles('ADMIN')
   @Post()
   creer(
     @CurrentUser() acteur: AuthAgent,
@@ -27,11 +26,10 @@ export class AgentsController {
   }
 
   @Get()
-  liste() {
-    return this.agents.liste();
+  liste(@CurrentUser() acteur: AuthAgent) {
+    return this.agents.liste(acteur);
   }
 
-  @Roles('ADMIN')
   @Patch(':id')
   modifier(
     @CurrentUser() acteur: AuthAgent,

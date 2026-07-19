@@ -75,9 +75,13 @@ export class AgentsService {
     }
   }
 
-  liste() {
+  /** Un ADMIN voit tous les comptes ; un superviseur ne voit que les comptes AGENT. */
+  liste(acteur: AuthAgent) {
     return this.prisma.agent.findMany({
-      where: { deletedAt: null },
+      where: {
+        deletedAt: null,
+        ...(acteur.role === 'ADMIN' ? {} : { role: 'AGENT' }),
+      },
       select: CHAMPS_PUBLICS,
       orderBy: { createdAt: 'asc' },
     });
