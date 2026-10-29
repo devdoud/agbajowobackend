@@ -198,6 +198,7 @@ model Versement {
 
   @@index([contratId, paidAt])
   @@index([agentId, paidAt]) // rapport de caisse (spec 0002)
+  @@index([createdAt]) // réceptions tardives (spec 0002)
   @@map("versements")
 }
 
@@ -223,6 +224,7 @@ model Avance {
 
   @@index([contratId])
   @@index([agentId, dateAvance]) // rapport de caisse (spec 0002)
+  @@index([createdAt]) // réceptions tardives (spec 0002)
   @@map("avances")
 }
 
@@ -248,5 +250,6 @@ model Retrait {
 
   @@index([contratId])
   @@index([agentId, dateRetrait]) // rapport de caisse (spec 0002)
+  @@index([createdAt]) // réceptions tardives (spec 0002)
   @@map("retraits")
 }

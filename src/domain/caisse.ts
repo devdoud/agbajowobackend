@@ -93,6 +93,63 @@ export function trierLignes<T extends LigneCaisse>(lignes: T[]): T[] {
   );
 }
 
+/** Effet d'une synchro tardive sur un jour terrain passé (spec 0002, AC-14). */
+export interface JourReceptionTardive {
+  date: string;
+  nbMouvements: number;
+  encaisse: number;
+  avances: number;
+  retraitsNets: number;
+  decaisse: number;
+  /** Positif : le solde attendu de ce jour a augmenté (l'agent devait plus). */
+  effetSolde: number;
+}
+
+export interface ReceptionsTardives {
+  nbMouvements: number;
+  effetSolde: number;
+  parJour: JourReceptionTardive[];
+}
+
+/**
+ * Réceptions tardives du jour D (spec 0002, AC-13) : parmi les lignes reçues pendant
+ * D, celles dont la date terrain tombe avant `debutD`, regroupées par jour terrain.
+ * Chaque jour est calculé comme son propre rapport ; elles ne changent pas le jour D.
+ */
+export function regrouperReceptionsTardives(
+  lignes: LigneCaisse[],
+  debutD: Date,
+): ReceptionsTardives {
+  const parDate = new Map<string, LigneCaisse[]>();
+  for (const ligne of lignes) {
+    if (ligne.dateTerrain.getTime() >= debutD.getTime()) continue;
+    const date = jourBenin(ligne.dateTerrain);
+    parDate.set(date, [...(parDate.get(date) ?? []), ligne]);
+  }
+  const parJour = [...parDate.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([date, lignesDuJour]): JourReceptionTardive => {
+      const { totaux } = calculerRapportCaisse(
+        lignesDuJour,
+        bornesJour(date).fin,
+      );
+      return {
+        date,
+        nbMouvements: totaux.nbMouvements,
+        encaisse: totaux.encaisse,
+        avances: totaux.avances,
+        retraitsNets: totaux.retraitsNets,
+        decaisse: totaux.decaisse,
+        effetSolde: totaux.soldeAttendu,
+      };
+    });
+  return {
+    nbMouvements: parJour.reduce((n, j) => n + j.nbMouvements, 0),
+    effetSolde: parJour.reduce((s, j) => s + j.effetSolde, 0),
+    parJour,
+  };
+}
+
 /** Totaux, solde et arrivées tardives, calculés sur les lignes mêmes du rapport. */
 export function calculerRapportCaisse(
   lignes: LigneCaisse[],

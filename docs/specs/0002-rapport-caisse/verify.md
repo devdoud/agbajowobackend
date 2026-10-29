@@ -28,3 +28,22 @@ Prérequis : Docker démarré ; pour les étapes sur l'API de dev, `npm run star
 
 ## Acceptance-criteria coverage
 - AC-1 : happy path, sourcing des totaux · AC-2 : attribution · AC-3 : bornes, mutation · AC-4 : happy path, égalité synthèse et détail · AC-5 : solde négatif · AC-6 : synchro tardive · AC-7 : happy path, membre supprimé, ordre · AC-8 : jour par défaut, dates refusées · AC-9 : portée, compte supprimé · AC-10 : synthèse, 403 · AC-11 : index en base · AC-12 : membre supprimé, aucune écriture (routes GET seulement)
+
+# Verify: réceptions tardives (AC-13 à AC-18) · spec 0002 · updated 2026-10-29
+_Ajout du 2026-10-29. `/check verify` runs these; `/test` locks the durable ones._
+
+## Commands
+- [x] `npx jest src/domain/caisse` → 17 tests au vert, dont 4 pour `regrouperReceptionsTardives` (regroupement par jour, effet négatif, frontière du Bénin, cas vide) → AC-13, AC-14
+- [x] `npm run test:int` → 7 suites et 76 tests au vert, dont `receptions-tardives` (6 tests) → AC-13 à AC-18
+- [x] `prisma migrate deploy` sur la base locale, puis `SELECT indexname FROM pg_indexes WHERE indexname LIKE '%created_at_idx'` → les trois index présents → AC-16 (performance de la synthèse)
+- [x] Sur l'API de dev, pousser en synchro un versement daté d'hier, puis `GET /api/v1/caisse/agents/<id>` sans date → `receptionsTardives.nbMouvements` 1, `parJour[0].date` = hier, totaux du jour inchangés → AC-13, AC-14, AC-15
+- [x] Sur l'API de dev, `GET /api/v1/caisse` avec un jeton superviseur → chaque ligne et la journée ont `receptionsTardives { nbMouvements, effetSolde }` → AC-16
+
+## Value sourcing
+- [x] Jour de réception = jour du Bénin de `createdAt` : reçu le 20 à 11:00 UTC, daté du 18 et du 19 → deux éléments dans `parJour`, effets `"1500"` et `"-600"`, total `"900"` → AC-13, AC-14
+- [x] Le jour D ne change pas : son seul versement daté du 20 reste `encaisse` `"500"`, `arriveesTardives` 0 → AC-15
+- [x] Cas vide : `{ nbMouvements: 0, effetSolde: "0", parJour: [], lignes: [] }` → AC-14
+- [x] Réception précoce : daté du 21 à 00:05 au Bénin, reçu le 20 à 23:55 → dans aucun signal → AC-13
+- [x] Synthèse : un compte désactivé qui n'a qu'une réception tardive apparaît, égal à son détail ; journée `"600"` = somme des comptes → AC-16
+- [x] Cohérence : un retrait daté du 18 et reçu le 20 donne `arriveesTardives` 1 le 18 et `effetSolde` `"-1000"` le 20 → AC-17
+- [x] Portée : un `AGENT` ne voit pas les réceptions tardives d'un autre (404) → AC-18

@@ -3,6 +3,7 @@ import {
   calculerRapportCaisse,
   estJourValide,
   jourBenin,
+  regrouperReceptionsTardives,
   trierLignes,
   type LigneCaisse,
 } from './caisse';
@@ -147,5 +148,107 @@ describe('calculerRapportCaisse', () => {
     expect(r.totaux.nbMouvements).toBe(0);
     expect(r.soldeNegatif).toBe(false);
     expect(r.arriveesTardives).toBe(0);
+  });
+});
+
+describe('regrouperReceptionsTardives', () => {
+  // Jour D = 2026-10-29 au Bénin : commence le 28 à 23:00 UTC.
+  const debutD = new Date('2026-10-28T23:00:00Z');
+  const recu = new Date('2026-10-29T10:00:00Z');
+
+  it('regroupe par jour terrain passé, trié, avec l’effet de chaque jour (AC-13, AC-14)', () => {
+    const r = regrouperReceptionsTardives(
+      [
+        ligne({
+          id: 'a',
+          type: 'AVANCE',
+          montant: 600,
+          dateTerrain: new Date('2026-10-28T10:00:00Z'),
+          recuServeurA: recu,
+        }),
+        ligne({
+          id: 'v1',
+          montant: 1500,
+          dateTerrain: new Date('2026-10-27T10:00:00Z'),
+          recuServeurA: recu,
+        }),
+        ligne({
+          id: 'v2',
+          montant: 500,
+          dateTerrain: new Date('2026-10-28T09:00:00Z'),
+          recuServeurA: recu,
+        }),
+      ],
+      debutD,
+    );
+    expect(r).toEqual({
+      nbMouvements: 3,
+      effetSolde: 1400,
+      parJour: [
+        {
+          date: '2026-10-27',
+          nbMouvements: 1,
+          encaisse: 1500,
+          avances: 0,
+          retraitsNets: 0,
+          decaisse: 0,
+          effetSolde: 1500,
+        },
+        {
+          date: '2026-10-28',
+          nbMouvements: 2,
+          encaisse: 500,
+          avances: 600,
+          retraitsNets: 0,
+          decaisse: 600,
+          effetSolde: -100,
+        },
+      ],
+    });
+  });
+
+  it('donne un effet négatif pour un retrait reçu en retard (AC-14)', () => {
+    const r = regrouperReceptionsTardives(
+      [
+        ligne({
+          type: 'RETRAIT',
+          montant: 1000,
+          dateTerrain: new Date('2026-10-28T10:00:00Z'),
+          recuServeurA: recu,
+        }),
+      ],
+      debutD,
+    );
+    expect(r.effetSolde).toBe(-1000);
+    expect(r.parJour[0].retraitsNets).toBe(1000);
+  });
+
+  it('ignore les lignes datées du jour D ou après, frontière du Bénin comprise (AC-13)', () => {
+    const r = regrouperReceptionsTardives(
+      [
+        ligne({ id: 'minuitD', dateTerrain: debutD, recuServeurA: recu }),
+        ligne({
+          id: 'precoce',
+          dateTerrain: new Date('2026-10-29T23:05:00Z'),
+          recuServeurA: recu,
+        }),
+        ligne({
+          id: 'veille',
+          dateTerrain: new Date('2026-10-28T22:59:59Z'),
+          recuServeurA: recu,
+        }),
+      ],
+      debutD,
+    );
+    expect(r.nbMouvements).toBe(1);
+    expect(r.parJour.map((j) => j.date)).toEqual(['2026-10-28']);
+  });
+
+  it('rend un résultat vide sans réception tardive (AC-14)', () => {
+    expect(regrouperReceptionsTardives([], debutD)).toEqual({
+      nbMouvements: 0,
+      effetSolde: 0,
+      parJour: [],
+    });
   });
 });
