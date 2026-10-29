@@ -127,7 +127,10 @@ export class ContratsService {
         // Plancher à 0 : le solde net représente le montant récupérable, jamais négatif
         // (cohérent avec le net de retrait). La commission G2 est prélevée en entier dès
         // la 1re mise (R2), donc le net reste 0 tant que les cotisations ne la couvrent pas.
-        soldeNet: Math.max(0, soldeBrut - commission - interetDu - avanceRestante),
+        soldeNet: Math.max(
+          0,
+          soldeBrut - commission - interetDu - avanceRestante,
+        ),
         progression:
           contrat.targetMises > 0
             ? Math.min(
