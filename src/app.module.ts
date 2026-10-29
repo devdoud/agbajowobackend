@@ -40,6 +40,11 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     HealthModule,
   ],
   controllers: [AppController],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [
+    // `useExisting` : le guard reste remplaçable dans les tests d'intégration
+    // (overrideProvider(ThrottlerGuard)).
+    ThrottlerGuard,
+    { provide: APP_GUARD, useExisting: ThrottlerGuard },
+  ],
 })
 export class AppModule {}
