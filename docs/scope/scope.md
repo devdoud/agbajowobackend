@@ -36,6 +36,7 @@ _Ce sont des recommandations pour garder ton build ordonné, pas des obligations
 | 9 | Tests d'intégration : retrait et concurrence | Foundation | done |
 | 10 | Remise de caisse du soir | Slice 1 | planned |
 | 11 | Verrou de contrat sur les avances | Foundation | done |
+| 12 | Règles des dates terrain | Foundation | done |
 
 ## Déjà construit
 
@@ -104,6 +105,19 @@ L'avance lit les avances et le solde du contrat sans le verrou ajouté au retrai
 - [x] Build it: `/develop verrou de contrat sur les avances`
 Spec [0002](../specs/0002-rapport-caisse/index.md) (suivi) · code in `src/modules/avances/avances.service.ts`, `test/integration/concurrence.int-spec.ts`
 
+### 12. Règles des dates terrain · done · from spec 0003
+Contrôler la date terrain des versements, avances et retraits, qui décide du jour où l'argent compte dans le rapport de caisse : format ISO avec fuseau, au plus 15 minutes dans le futur, au plus 30 jours dans le passé, pas avant le début du contrat. En synchro, un mouvement mal daté devient un conflit sans bloquer le lot. Trouvé par les revues du rapport de caisse, à faire avant le pilote.
+**Done when:** aucune date `null`, sans fuseau, future ou trop ancienne n'est enregistrée, en direct comme en synchro ; un mouvement mal daté est un conflit visible et ne bloque jamais une synchro.
+- [x] Design it (spec): `/architect règles des dates terrain`
+- [x] Build it: `/develop règles des dates terrain`
+   - [x] Règle du domaine et horloge fixe dans le harnais (AC-1, AC-3, AC-4, AC-5, AC-10, AC-11)
+   - [x] Fil versement de bout en bout (AC-1, AC-2, AC-3, AC-4, AC-5, AC-8, AC-9, AC-11)
+   - [x] Avances et retraits (AC-1 à AC-5, AC-8)
+   - [x] Synchro par mouvement et script smoke (AC-6, AC-7, AC-8, AC-11)
+- [x] Verify it: `/check verify règles des dates terrain`
+- [x] Test it: `/test règles des dates terrain`
+Spec [0003](../specs/0003-regles-dates-terrain/index.md) · code in `src/domain/date-terrain.ts`, `src/common/schemas/date-terrain.schema.ts`, `src/modules/sync/sync.service.ts`, services collecte, avances et retraits
+
 ## Slice 1: Rapport de caisse
 
 ### 2. Rapport de caisse par agent et par jour · in-progress · GA
@@ -116,11 +130,12 @@ Le fil central du pilote : pour un agent et une journée, ce qu'il a encaissé, 
    - [x] Règles du détail : date par défaut et refusée, portée, frontière du jour, synchro tardive (AC-3, AC-5, AC-6, AC-8, AC-9)
    - [x] Synthèse de tous les agents d'une journée (AC-4, AC-10)
    - [x] Migration des trois index (AC-11)
+   - [x] Réceptions tardives le jour où elles arrivent, avec leur index (AC-13 à AC-18)
 - [x] Verify it: `/check verify rapport de caisse`
 - [x] Test it: `/test rapport de caisse`
 - [x] Review it (fresh model): `/check review rapport de caisse`
-- [ ] Document it: `/document rapport de caisse`
-Spec [0002](../specs/0002-rapport-caisse/index.md) · code in `src/modules/caisse/`, `src/domain/caisse.ts`, `prisma/migrations/20261029120000_index_rapport_caisse/`
+- [x] Document it: `/document rapport de caisse`
+Spec [0002](../specs/0002-rapport-caisse/index.md) · code in `src/modules/caisse/`, `src/domain/caisse.ts`, `prisma/migrations/20261029120000_index_rapport_caisse/`, `prisma/migrations/20261029130000_index_reception_mouvements/`
 
 ### 10. Remise de caisse du soir · needs a decision · from spec 0002
 Enregistrer l'argent qu'un agent remet le soir, qui l'a reçu, et l'écart avec le solde attendu du rapport de caisse. C'est la preuve complète du zéro écart ; elle s'appuie sur le journal d'audit (fonction 3).
@@ -174,7 +189,7 @@ Hors de la tranche pilote, gardé pour que le plan reste honnête.
 - **Tests de portée par rôle sur tous les modules** : AGENT, SUPERVISEUR et ADMIN sur chaque route, sur le harnais de la spec 0001 · from spec 0001
 - **Données personnelles complètes** : déclaration APDP, chiffrement des champs sensibles, effacement à la demande · needs a decision · GA
 - **Jour du Bénin partout** : réutiliser `jourBenin` dans le reste du code qui calcule « aujourd'hui » avec l'heure du serveur (statut de collecte, tableau de bord) · from spec 0002
-- **Téléphone mal réglé** : signaler un mouvement dont la date terrain s'écarte trop de sa réception serveur · from spec 0002
+- **Téléphone mal réglé** : signaler un mouvement dont la date terrain s'écarte trop de sa réception serveur · from spec 0002 · repris par la fonction 12 (refus des dates hors bornes)
 
 ## Legend
 
