@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { prochainRecu } from '@/common/receipt';
+import { verrouillerContrat } from '@/common/verrou-contrat';
 import { commissionDue } from '@/domain/commission';
 import {
   calculerRetraitPartiel,
@@ -42,6 +43,13 @@ export class RetraitsService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        await verrouillerContrat(tx, dto.contratId);
+        // Une relance du même id a pu attendre le verrou pendant que l'original
+        // s'enregistrait : on la rejoue avant d'appliquer les règles métier.
+        const dejaEnregistre = await tx.retrait.findUnique({
+          where: { idempotencyKey: id },
+        });
+        if (dejaEnregistre) return dejaEnregistre;
         const contrat = await tx.contrat.findFirst({
           where: {
             id: dto.contratId,

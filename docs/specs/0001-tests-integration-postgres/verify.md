@@ -30,3 +30,21 @@ Prérequis : Docker Desktop démarré.
 
 ## Acceptance-criteria coverage
 - AC-1 : steps 1, 2 · AC-2 : step 3 · AC-3 : steps 4, 5 · AC-4 : steps 6, 7 · AC-5 : step 8 et suite collecte · AC-6 : step 8, test `limite-debit` · AC-7 : test nominal, sourcing montant, plage, reçu · AC-8 : test idempotence · AC-9 : tests objectif, mutation · AC-10 : tests 401, 400, 404, sourcing `requestId` · AC-11 : step 9 · AC-12 : step 10
+
+# Verify: retrait et concurrence (fonction 9 du scope) · spec 0001 · updated 2026-10-29
+_Suite de la spec 0001 (suivis « retrait » et « concurrence »). `/check verify` runs these; `/test` locks the durable ones._
+
+## Commands
+- [x] `npm run test:int` → 4 suites et 22 tests au vert (dont `retrait` et `concurrence`) → suivi retrait, suivi concurrence
+- [x] `npx jest --config test/jest-int.json --runInBand concurrence` trois fois de suite → au vert à chaque fois (pas de test instable) → suivi concurrence
+- [x] Mutation : retirer l'appel `verrouillerContrat` de `retraits.service.ts` et `collecte.service.ts`, puis lancer `concurrence` → les 4 tests échouent (5 retraits sur 5 acceptés, objectif dépassé, versements restés dans un contrat clos) ; remettre le code → suivi concurrence (le test attrape la vraie course)
+
+## Value sourcing
+- [x] Contrat GROUPE_1, 10 mises de 500 → retrait total : brut `"5000"`, commission `"500"`, net `"4500"`, contrat en `CLOTURE_ANTICIPEE` → suivi retrait (total)
+- [x] Partiel 1000 puis partiel 1000 → commission `"500"` au premier, `"0"` au second ; brut 1500 puis 1000 → suivi retrait (commission prioritaire, une seule fois)
+- [x] Partiel 4501 sur 4500 récupérables → 422 `BUSINESS_RULE`, aucun retrait en base → suivi retrait (plafond)
+- [x] 1 mise versée → partiel refusé, total à net `"0"` qui garde la commission `"500"` → suivi retrait (commission prioritaire)
+- [x] Contrat `SUSPENDU` → 422 `BUSINESS_RULE` → suivi retrait (contrat non actif)
+- [x] 5 retraits simultanés (total, ou partiel de 3000) → un seul 201, quatre 422 ; en base un seul retrait, commission prélevée une fois → suivi concurrence
+- [x] 5 encaissements simultanés de 3 mises, objectif 5 → un seul 201 ; 3 mises en base → suivi concurrence
+- [x] Retrait total et deux encaissements simultanés → contrat clos, somme des versements = somme des retraits bruts (aucun argent resté dans un contrat clos) → suivi concurrence (zéro écart de caisse)

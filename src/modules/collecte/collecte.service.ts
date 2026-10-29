@@ -8,6 +8,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { plageMises } from '@/domain/mises';
 import { prochainRecu } from '@/common/receipt';
+import { verrouillerContrat } from '@/common/verrou-contrat';
 import type { AuthAgent } from '@/modules/auth/types';
 import type { EncaisserDto } from './dto/encaisser.dto';
 
@@ -34,6 +35,13 @@ export class CollecteService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        await verrouillerContrat(tx, dto.contratId);
+        // Une relance du même id a pu attendre le verrou pendant que l'original
+        // s'enregistrait : on la rejoue avant d'appliquer les règles métier.
+        const dejaEnregistre = await tx.versement.findUnique({
+          where: { idempotencyKey: id },
+        });
+        if (dejaEnregistre) return dejaEnregistre;
         const contrat = await tx.contrat.findFirst({
           where: {
             id: dto.contratId,
