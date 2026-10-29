@@ -65,14 +65,20 @@ export class RetraitsService {
           tx.avance.findMany({ where: { contratId: contrat.id } }),
           tx.retrait.aggregate({
             where: { contratId: contrat.id },
-            _sum: { montantBrut: true, commissionPrelevee: true, interetDu: true },
+            _sum: {
+              montantBrut: true,
+              commissionPrelevee: true,
+              interetDu: true,
+            },
           }),
         ]);
 
         const soldeBrut = Number(vAgg._sum.amount ?? 0n);
         const misesVersees = vAgg._sum.misesCount ?? 0;
         const dejaRetire = Number(rAgg._sum.montantBrut ?? 0n);
-        const commissionDejaPrelevee = Number(rAgg._sum.commissionPrelevee ?? 0n);
+        const commissionDejaPrelevee = Number(
+          rAgg._sum.commissionPrelevee ?? 0n,
+        );
         const interetDejaPreleve = Number(rAgg._sum.interetDu ?? 0n);
         const miseAmount = Number(contrat.miseAmount);
         const commission = commissionDue(

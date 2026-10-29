@@ -1,0 +1,9 @@
+{
+  "tool": "jest",
+  "gate": null,
+  "additionalTools": ["supertest", "@testcontainers/postgresql"],
+  "e2eTool": "none",
+  "testDir": "beside the source (unit), test/integration (integration)",
+  "filePattern": "*.spec.ts (unit), *.int-spec.ts (integration)",
+  "packageManager": "npm"
+}

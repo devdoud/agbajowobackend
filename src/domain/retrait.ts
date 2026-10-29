@@ -48,7 +48,10 @@ export interface OperationRetrait {
 export function recuperableNet(e: EtatRetrait): number {
   return Math.max(
     0,
-    e.brutDisponible - e.commissionRestante - e.interetRestant - e.avanceRestante,
+    e.brutDisponible -
+      e.commissionRestante -
+      e.interetRestant -
+      e.avanceRestante,
   );
 }
 
