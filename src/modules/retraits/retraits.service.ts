@@ -8,6 +8,8 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { prochainRecu } from '@/common/receipt';
 import { verrouillerContrat } from '@/common/verrou-contrat';
+import { ClockService } from '@/common/clock/clock.service';
+import { verifierBornesDateTerrain } from '@/domain/date-terrain';
 import { commissionDue } from '@/domain/commission';
 import {
   calculerRetraitPartiel,
@@ -20,7 +22,10 @@ import type { EffectuerRetraitDto } from './dto/effectuer-retrait.dto';
 
 @Injectable()
 export class RetraitsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly clock: ClockService,
+  ) {}
 
   private estGlobal(agent: AuthAgent): boolean {
     return agent.role === 'SUPERVISEUR' || agent.role === 'ADMIN';
@@ -44,6 +49,8 @@ export class RetraitsService {
     try {
       return await this.prisma.$transaction(async (tx) => {
         await verrouillerContrat(tx, dto.contratId);
+        // Lue après l'attente du verrou : c'est l'heure de l'écriture réelle.
+        const maintenant = this.clock.now();
         // Une relance du même id a pu attendre le verrou pendant que l'original
         // s'enregistrait : on la rejoue avant d'appliquer les règles métier.
         const dejaEnregistre = await tx.retrait.findUnique({
@@ -62,6 +69,20 @@ export class RetraitsService {
           throw new UnprocessableEntityException({
             code: 'BUSINESS_RULE',
             message: 'Contrat non actif : retrait impossible.',
+          });
+        }
+
+        // Date terrain plausible (spec 0003) : elle range l'argent dans un jour.
+        const dateTerrain = dto.dateRetrait ?? maintenant;
+        const bornes = verifierBornesDateTerrain(
+          dateTerrain,
+          maintenant,
+          contrat.startDate,
+        );
+        if (!bornes.ok) {
+          throw new UnprocessableEntityException({
+            code: 'BUSINESS_RULE',
+            message: bornes.raison,
           });
         }
 
@@ -143,7 +164,7 @@ export class RetraitsService {
             commissionPrelevee: BigInt(commissionPrelevee),
             interetDu: BigInt(interetPreleve),
             montantNet: BigInt(montantNet),
-            dateRetrait: dto.dateRetrait ?? new Date(),
+            dateRetrait: dateTerrain,
             receiptNumber: await prochainRecu(tx),
             idempotencyKey: id,
           },

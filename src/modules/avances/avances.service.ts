@@ -8,6 +8,8 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { prochainRecu } from '@/common/receipt';
 import { verrouillerContrat } from '@/common/verrou-contrat';
+import { ClockService } from '@/common/clock/clock.service';
+import { verifierBornesDateTerrain } from '@/domain/date-terrain';
 import {
   interetAvance,
   montantAttenduMensuel,
@@ -18,7 +20,10 @@ import type { AccorderAvanceDto } from './dto/accorder-avance.dto';
 
 @Injectable()
 export class AvancesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly clock: ClockService,
+  ) {}
 
   private estGlobal(agent: AuthAgent): boolean {
     return agent.role === 'SUPERVISEUR' || agent.role === 'ADMIN';
@@ -35,6 +40,8 @@ export class AvancesService {
     try {
       return await this.prisma.$transaction(async (tx) => {
         await verrouillerContrat(tx, dto.contratId);
+        // Lue après l'attente du verrou : c'est l'heure de l'écriture réelle.
+        const maintenant = this.clock.now();
         // Une relance du même id a pu attendre le verrou pendant que l'original
         // s'enregistrait : on la rejoue avant d'appliquer les règles métier.
         const dejaEnregistre = await tx.avance.findUnique({
@@ -53,6 +60,20 @@ export class AvancesService {
           throw new UnprocessableEntityException({
             code: 'BUSINESS_RULE',
             message: 'Contrat non actif : avance impossible.',
+          });
+        }
+
+        // Date terrain plausible (spec 0003) : elle range l'argent dans un jour.
+        const dateTerrain = dto.dateAvance ?? maintenant;
+        const bornes = verifierBornesDateTerrain(
+          dateTerrain,
+          maintenant,
+          contrat.startDate,
+        );
+        if (!bornes.ok) {
+          throw new UnprocessableEntityException({
+            code: 'BUSINESS_RULE',
+            message: bornes.raison,
           });
         }
 
@@ -89,7 +110,7 @@ export class AvancesService {
               montantAttenduMensuel(contrat.misesParMois, miseAmount),
             ),
             interet: BigInt(interetAvance(miseAmount, dto.nbMois)),
-            dateAvance: dto.dateAvance ?? new Date(),
+            dateAvance: dateTerrain,
             receiptNumber: await prochainRecu(tx),
             idempotencyKey: id,
           },

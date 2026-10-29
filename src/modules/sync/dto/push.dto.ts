@@ -33,7 +33,9 @@ const versementPush = z.object({
   id: z.string().uuid(),
   contratId: z.string().uuid(),
   misesCount: z.coerce.number().int().positive(),
-  paidAt: z.coerce.date().optional(),
+  // Date terrain brute : lue mouvement par mouvement par SyncService (spec 0003),
+  // pour qu'une date fautive donne un conflit au lieu de faire échouer tout le lot.
+  paidAt: z.unknown(),
 });
 
 const avancePush = z.object({
@@ -41,7 +43,7 @@ const avancePush = z.object({
   contratId: z.string().uuid(),
   nbMois: z.coerce.number().int().min(1).max(3),
   montant: z.coerce.number().int().positive(),
-  dateAvance: z.coerce.date().optional(),
+  dateAvance: z.unknown(),
 });
 
 const retraitPush = z.object({
@@ -49,7 +51,7 @@ const retraitPush = z.object({
   contratId: z.string().uuid(),
   type: z.enum(['PARTIEL', 'TOTAL']),
   montant: z.coerce.number().int().positive().optional(),
-  dateRetrait: z.coerce.date().optional(),
+  dateRetrait: z.unknown(),
 });
 
 /** Lot de mutations locales poussées par un agent, ordonnées par dépendances. */
