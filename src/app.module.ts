@@ -17,6 +17,7 @@ import { AvancesModule } from './modules/avances/avances.module';
 import { RetraitsModule } from './modules/retraits/retraits.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { CaisseModule } from './modules/caisse/caisse.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     RetraitsModule,
     SyncModule,
     DashboardModule,
+    CaisseModule,
     HealthModule,
   ],
   controllers: [AppController],

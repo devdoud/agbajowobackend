@@ -197,6 +197,7 @@ model Versement {
   agent   Agent   @relation(fields: [agentId], references: [id])
 
   @@index([contratId, paidAt])
+  @@index([agentId, paidAt]) // rapport de caisse (spec 0002)
   @@map("versements")
 }
 
@@ -221,6 +222,7 @@ model Avance {
   agent   Agent   @relation(fields: [agentId], references: [id])
 
   @@index([contratId])
+  @@index([agentId, dateAvance]) // rapport de caisse (spec 0002)
   @@map("avances")
 }
 
@@ -245,5 +247,6 @@ model Retrait {
   agent   Agent   @relation(fields: [agentId], references: [id])
 
   @@index([contratId])
+  @@index([agentId, dateRetrait]) // rapport de caisse (spec 0002)
   @@map("retraits")
 }
