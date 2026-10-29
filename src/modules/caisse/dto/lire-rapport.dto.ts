@@ -8,6 +8,9 @@ export const lireRapportSchema = z.object({
     .refine(estJourValide, {
       message: 'Date attendue au format YYYY-MM-DD, et qui existe.',
     })
+    .describe(
+      "Jour du Bénin (UTC+1) au format YYYY-MM-DD, aujourd'hui par défaut ; une date future est refusée.",
+    )
     .optional(),
 });
 

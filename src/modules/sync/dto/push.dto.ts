@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DESCRIPTION_DATE_TERRAIN_SYNCHRO } from '@/common/schemas/date-terrain.schema';
 
 const membrePush = z.object({
   id: z.string().uuid(),
@@ -35,7 +36,7 @@ const versementPush = z.object({
   misesCount: z.coerce.number().int().positive(),
   // Date terrain brute : lue mouvement par mouvement par SyncService (spec 0003),
   // pour qu'une date fautive donne un conflit au lieu de faire échouer tout le lot.
-  paidAt: z.unknown(),
+  paidAt: z.unknown().describe(DESCRIPTION_DATE_TERRAIN_SYNCHRO),
 });
 
 const avancePush = z.object({
@@ -43,7 +44,7 @@ const avancePush = z.object({
   contratId: z.string().uuid(),
   nbMois: z.coerce.number().int().min(1).max(3),
   montant: z.coerce.number().int().positive(),
-  dateAvance: z.unknown(),
+  dateAvance: z.unknown().describe(DESCRIPTION_DATE_TERRAIN_SYNCHRO),
 });
 
 const retraitPush = z.object({
@@ -51,7 +52,7 @@ const retraitPush = z.object({
   contratId: z.string().uuid(),
   type: z.enum(['PARTIEL', 'TOTAL']),
   montant: z.coerce.number().int().positive().optional(),
-  dateRetrait: z.unknown(),
+  dateRetrait: z.unknown().describe(DESCRIPTION_DATE_TERRAIN_SYNCHRO),
 });
 
 /** Lot de mutations locales poussées par un agent, ordonnées par dépendances. */

@@ -27,6 +27,13 @@ export const envSchema = z.object({
   // Médias / photos (L4)
   MEDIA_DIR: z.string().default('./media'),
   MEDIA_MAX_BYTES: z.coerce.number().int().positive().default(2_097_152), // 2 Mo
+
+  // Documentation Swagger sur /api/v1/docs : éteinte par défaut (prod comprise).
+  // Pas de z.coerce.boolean(), qui lirait la chaîne "false" comme vrai.
+  SWAGGER_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
 });
 
 export type Env = z.infer<typeof envSchema>;
