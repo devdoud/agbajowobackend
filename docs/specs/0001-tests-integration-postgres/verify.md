@@ -13,7 +13,7 @@ Prérequis : Docker Desktop démarré.
 - [x] `curl` d'une route qui renvoie un `BigInt` (par exemple un versement) sur l'API de dev → montants en chaînes, pas d'erreur de sérialisation → AC-4
 - [x] Sur l'API de dev, 11 `POST /api/v1/auth/login` en moins d'une minute → le 11e renvoie 429 `RATE_LIMITED` (la limite reste active en prod malgré `useExisting`) → AC-5, AC-6
 - [x] `DOCKER_HOST=tcp://127.0.0.1:1 npm run test:int` → échec immédiat avec « Docker est introuvable ou arrêté… », code de sortie non nul → AC-11
-- [ ] Pousser une branche et ouvrir une PR → l'étape « Tests d'intégration (PostgreSQL via Testcontainers) » tourne après « Tests » et passe → AC-12
+- [x] Pousser une branche et ouvrir une PR → l'étape « Tests d'intégration (PostgreSQL via Testcontainers) » tourne après « Tests » et passe → AC-12
 - [x] Mutation : changer `> contrat.targetMises` en `> contrat.targetMises + 1000` dans `collecte.service.ts`, puis `npm run test:int` → le test « refuse un versement qui dépasse l'objectif » échoue ; remettre le code → AC-9 (la suite attrape une vraie régression)
 
 ## Value sourcing

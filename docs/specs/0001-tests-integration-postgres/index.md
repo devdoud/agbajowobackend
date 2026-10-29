@@ -1,7 +1,7 @@
 # 0001. Tests d'intégration sur un Postgres jetable
 
 **Date**: 2026-10-29
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 

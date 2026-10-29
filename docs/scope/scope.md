@@ -25,7 +25,7 @@ _Ce sont des recommandations pour garder ton build ordonné, pas des obligations
 | J | Synchronisation hors ligne | Existant | existing |
 | K | Tableau de bord | Existant | existing |
 | L | Sécurité et déploiement VPS | Existant | existing |
-| 1 | Tests d'intégration sur Postgres | Foundation | in-progress |
+| 1 | Tests d'intégration sur Postgres | Foundation | done |
 | 2 | Rapport de caisse par agent et par jour | Slice 1 | planned |
 | 3 | Journal d'audit des mouvements | Slice 2 | planned |
 | 4 | Clôture de contrat | Slice 3 | planned |
@@ -77,7 +77,7 @@ helmet, limite de débit, filtre d'erreurs uniforme, identifiant de requête, Do
 
 ## Foundations
 
-### 1. Tests d'intégration sur Postgres · in-progress
+### 1. Tests d'intégration sur Postgres · done
 Tester les services contre une vraie base dans la CI, pour que chaque fonction du pilote qui touche l'argent soit prouvée de bout en bout, et pas seulement dans le domaine pur.
 **Done when:** `npm run test:int` lance des tests HTTP sur un Postgres jetable, en local comme dans la CI, et l'encaissement y est couvert (le retrait suit en fonction 9).
 - [x] Design it (spec): `/architect tests d'intégration sur Postgres`
@@ -86,8 +86,8 @@ Tester les services contre une vraie base dans la CI, pour que chaque fonction d
    - [x] Harnais : config Jest, conteneur, migrations, env de test, helpers et fabriques (AC-1, AC-2, AC-3, AC-11)
    - [x] Fil encaissement : nominal, idempotence, objectif et statut (AC-5, AC-7, AC-8, AC-9)
    - [x] Erreurs d'API, test de la limite de débit, étape CI (AC-6, AC-10, AC-12)
-- [ ] Verify it: `/check verify tests d'intégration sur Postgres`
-- [ ] Test it: `/test tests d'intégration sur Postgres`
+- [x] Verify it: `/check verify tests d'intégration sur Postgres`
+- [x] Test it: `/test tests d'intégration sur Postgres`
 Spec [0001](../specs/0001-tests-integration-postgres/index.md) · code in `test/`, `src/app.setup.ts`
 
 ### 9. Tests d'intégration : retrait et concurrence · from spec 0001

@@ -8,11 +8,11 @@ API de la plateforme de tontine Agbajowo (collecte de mises par des agents terra
 - **Framework**: NestJS 11 (Express)
 - **Key dependencies**: Prisma 6 + PostgreSQL 16, Zod (validation des DTO et de l'env), @nestjs/jwt + @node-rs/argon2, @nestjs/throttler, helmet
 - **Package manager**: npm
-- **Déploiement**: Docker (`Dockerfile`, `docker-compose.prod.yml`) derrière Caddy (HTTPS), CI GitHub Actions (lint, format, build, test)
+- **Déploiement**: Docker (`Dockerfile`, `docker-compose.prod.yml`) derrière Caddy (HTTPS), CI GitHub Actions (lint, format, build, test, tests d'intégration)
 
 ## Build approach
 
-<TBD, set by /scope>
+Tracer Bullet (chaque fonction est construite de bout en bout, du schéma à la route testée, et marche réellement).
 
 ## Commands
 
@@ -27,6 +27,8 @@ npm run start:dev
 npm run build
 # Test (Jest, specs à côté du code) puis vérifs de la CI
 npm test && npm run lint:ci && npm run format:check
+# Tests d'intégration (Docker requis : Postgres jetable via Testcontainers)
+npm run test:int
 # Smoke test de bout en bout (API démarrée + base seedée)
 npm run smoke
 # Nouvelle migration
@@ -35,7 +37,7 @@ npm run prisma:migrate -- --name <nom>
 
 ## Specs
 
-Stored in `docs/specs/`. Format: `docs/specs/NNNN-title.md`.
+Stored in `docs/specs/`. Format: `docs/specs/NNNN-title.md`, or a directory `docs/specs/NNNN-title/` (`index.md`, `rationale.md`, `verify.md`).
 
 ## Rules
 
@@ -54,6 +56,8 @@ Stored in `docs/specs/`. Format: `docs/specs/NNNN-title.md`.
 - L'env est validé au démarrage (`src/config/env.validation.ts`) : `DATABASE_URL` et deux secrets JWT d'au moins 16 caractères sont requis, sinon l'API refuse de démarrer. Copier `.env.example` en `.env`.
 - Écritures qui créent un mouvement : idempotentes (clé `idempotencyKey` / `id` client) et dans une `$transaction`. Les numéros (reçu, membre, agent, `server_seq`) viennent de séquences Postgres créées en SQL dans les migrations, pas dans le schéma Prisma.
 - En conteneur, `docker-entrypoint.sh` lance `prisma migrate deploy` avant l'API.
+- La configuration HTTP (helmet, `requestId`, filtre d'erreurs, préfixe `api/v1`, CORS, sérialisation des `BigInt`) vit dans `configurerApp` (`src/app.setup.ts`), partagée par `main.ts` et les tests : y ajouter tout nouveau réglage global, jamais directement dans `main.ts`.
+- `ThrottlerGuard` est déclaré en `APP_GUARD` via `useExisting` pour que les tests d'intégration puissent le remplacer : garder cette forme.
 
 ## Agent skills
 
@@ -62,9 +66,12 @@ Stored in `docs/specs/`. Format: `docs/specs/NNNN-title.md`.
 - [prisma-postgres](.agents/skills/prisma-postgres/): `prisma/skills`, Prisma avec PostgreSQL
 - [javascript-typescript-jest](.agents/skills/javascript-typescript-jest/): `github/awesome-copilot`, tests Jest en TypeScript
 
+Declined: Testcontainers, supertest
+
 ## Context files
 
 - [src/domain/AGENTS.md](src/domain/AGENTS.md): règles métier pures (commission, crédit, retrait, statut, relevé), sans Nest ni Prisma
 - [src/modules/sync/AGENTS.md](src/modules/sync/AGENTS.md): synchronisation hors ligne push/pull de l'app agent (curseur `server_seq`, conflits)
+- [test/AGENTS.md](test/AGENTS.md): harnais des tests d'intégration (Postgres jetable, fabriques, base vidée avant chaque test)
 
 _Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
