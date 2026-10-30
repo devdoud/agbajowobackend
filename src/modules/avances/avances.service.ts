@@ -29,7 +29,12 @@ export class AvancesService {
     return agent.role === 'SUPERVISEUR' || agent.role === 'ADMIN';
   }
 
-  async accorder(agent: AuthAgent, dto: AccorderAvanceDto) {
+  async accorder(
+    agent: AuthAgent,
+    dto: AccorderAvanceDto,
+    // Écart d'horloge corrigé par la synchro (spec 0005), gardé sur le mouvement.
+    { ecartHorlogeS }: { ecartHorlogeS?: number } = {},
+  ) {
     const id = dto.id ?? randomUUID();
 
     const existant = await this.prisma.avance.findUnique({
@@ -113,6 +118,7 @@ export class AvancesService {
             dateAvance: dateTerrain,
             receiptNumber: await prochainRecu(tx, maintenant),
             idempotencyKey: id,
+            ecartHorlogeS: ecartHorlogeS ?? null,
           },
         });
       });

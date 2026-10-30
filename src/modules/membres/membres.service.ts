@@ -9,6 +9,14 @@ import { PrismaService } from '@/prisma/prisma.service';
 import type { AuthAgent } from '@/modules/auth/types';
 import type { CreerMembreDto } from './dto/creer-membre.dto';
 
+/**
+ * Chiffres d'un numéro, sans l'indicatif du Bénin : « +229 97 00 00 01 » et
+ * « 97000001 » donnent la même clé. Même règle que la requête SQL de vérification.
+ */
+export function normaliserTelephone(telephone: string): string {
+  return telephone.replace(/[^0-9]/g, '').replace(/^229(?=[0-9]{8})/, '');
+}
+
 export interface OptionsListe {
   q?: string;
   limit: number;
@@ -100,6 +108,52 @@ export class MembresService {
       ? data[data.length - 1].serverSeq.toString()
       : null;
     return { data, nextCursor, hasMore };
+  }
+
+  /**
+   * Doublon possible (spec 0005) : membres de TOUS les agents ayant ce numéro. Un AGENT
+   * n'apprend que le numéro de membre et l'agent qui le suit, jamais la fiche d'un
+   * membre d'un autre agent (`id`, nom et prénoms restent à null).
+   */
+  async verifierTelephone(agent: AuthAgent, telephone: string) {
+    const cible = normaliserTelephone(telephone);
+    const trouves = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM membres
+      WHERE deleted_at IS NULL
+        AND regexp_replace(
+          regexp_replace(telephone, '[^0-9]', '', 'g'), '^229(?=[0-9]{8})', ''
+        ) = ${cible}
+    `;
+    const membres = await this.prisma.membre.findMany({
+      where: { id: { in: trouves.map((t) => t.id) } },
+      select: {
+        id: true,
+        numeroMembre: true,
+        nom: true,
+        prenoms: true,
+        ownerId: true,
+        owner: { select: { id: true, nom: true, numeroAgent: true } },
+      },
+      orderBy: { serverSeq: 'asc' },
+    });
+    return {
+      existe: membres.length > 0,
+      membres: membres.map((m) => {
+        const visible = this.estGlobal(agent) || m.ownerId === agent.id;
+        return {
+          id: visible ? m.id : null,
+          numeroMembre: m.numeroMembre,
+          nom: visible ? m.nom : null,
+          prenoms: visible ? m.prenoms : null,
+          estAMoi: m.ownerId === agent.id,
+          agent: {
+            ...(this.estGlobal(agent) ? { id: m.owner.id } : {}),
+            nom: m.owner.nom,
+            numeroAgent: m.owner.numeroAgent,
+          },
+        };
+      }),
+    };
   }
 
   async detail(agent: AuthAgent, id: string) {

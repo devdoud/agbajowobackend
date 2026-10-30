@@ -1,7 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import { ClockService } from '@/common/clock/clock.service';
+import {
+  DECALAGE_BENIN_MINUTES,
+  FUSEAU_CAISSE,
+  bornesJour,
+  jourBenin,
+  joursDeLaSerie,
+  remplirSerie,
+  type PointSerie,
+} from '@/domain/caisse';
 import { commissionDue } from '@/domain/commission';
 import { statutCollecte } from '@/domain/statut';
 import { ajouterJours, debutDeJour } from '@/domain/dates';
@@ -64,6 +73,73 @@ export class DashboardService {
     return periode === 'custom' && dateStr
       ? new Date(`${dateStr}T00:00:00`)
       : now;
+  }
+
+  /**
+   * Courbe par jour du Bénin (spec 0005) : encaissé, avances et retraits nets, rangés
+   * par date terrain comme le rapport de caisse, agrégés en base (pas de téléchargement
+   * de toute la base côté client). Portée : comme la caisse, par agent qui a manié l'argent.
+   */
+  async serie(agent: AuthAgent, jours: number, agentId?: string) {
+    let cible: string | null = null;
+    if (!this.estGlobal(agent)) {
+      if (agentId !== undefined && agentId !== agent.id) {
+        throw new NotFoundException('Agent introuvable');
+      }
+      cible = agent.id;
+    } else if (agentId !== undefined) {
+      const existe = await this.prisma.agent.findUnique({
+        where: { id: agentId },
+        select: { id: true },
+      });
+      if (!existe) throw new NotFoundException('Agent introuvable');
+      cible = agentId;
+    }
+
+    const liste = joursDeLaSerie(jourBenin(this.clock.now()), jours);
+    const debut = bornesJour(liste[0]).debut;
+    const fin = bornesJour(liste[liste.length - 1]).fin;
+    const filtreAgent = cible
+      ? Prisma.sql`AND agent_id = ${cible}::uuid`
+      : Prisma.empty;
+    // Même découpage que `jourBenin` : décalage fixe, sans heure d'été.
+    const jour = (colonne: Prisma.Sql) =>
+      Prisma.sql`to_char((${colonne} AT TIME ZONE 'UTC') + make_interval(mins => ${DECALAGE_BENIN_MINUTES}::int), 'YYYY-MM-DD')`;
+
+    const [versements, avances, retraits] = await Promise.all([
+      this.prisma.$queryRaw<{ jour: string; total: bigint; nb: number }[]>`
+        SELECT ${jour(Prisma.sql`paid_at`)} AS jour, SUM(amount)::bigint AS total, COUNT(*)::int AS nb
+        FROM versements
+        WHERE paid_at >= ${debut} AND paid_at < ${fin} ${filtreAgent}
+        GROUP BY 1`,
+      this.prisma.$queryRaw<{ jour: string; total: bigint }[]>`
+        SELECT ${jour(Prisma.sql`date_avance`)} AS jour, SUM(montant)::bigint AS total
+        FROM avances
+        WHERE date_avance >= ${debut} AND date_avance < ${fin} ${filtreAgent}
+        GROUP BY 1`,
+      this.prisma.$queryRaw<{ jour: string; total: bigint }[]>`
+        SELECT ${jour(Prisma.sql`date_retrait`)} AS jour, SUM(montant_net)::bigint AS total
+        FROM retraits
+        WHERE date_retrait >= ${debut} AND date_retrait < ${fin} ${filtreAgent}
+        GROUP BY 1`,
+    ]);
+
+    const sommes: Record<string, Partial<Omit<PointSerie, 'date'>>> = {};
+    const point = (j: string) => (sommes[j] ??= {});
+    for (const v of versements) {
+      point(v.jour).encaisse = Number(v.total);
+      point(v.jour).nbVersements = v.nb;
+    }
+    for (const a of avances) point(a.jour).avances = Number(a.total);
+    for (const r of retraits) point(r.jour).retraitsNets = Number(r.total);
+
+    return {
+      du: liste[0],
+      au: liste[liste.length - 1],
+      fuseau: FUSEAU_CAISSE,
+      agentId: cible,
+      points: remplirSerie(liste, sommes),
+    };
   }
 
   async stats(agent: AuthAgent, periode: Periode, dateStr?: string) {

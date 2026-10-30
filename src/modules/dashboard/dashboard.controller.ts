@@ -6,7 +6,9 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { ApiErreurs } from '@/common/swagger/zod-openapi';
+import { ApiErreurs, ApiRequeteZod } from '@/common/swagger/zod-openapi';
+import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe';
+import { lireSerieSchema, type LireSerieDto } from './dto/lire-serie.dto';
 import { DashboardService, type Periode } from './dashboard.service';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import type { StatutCollecte } from '@/domain/types';
@@ -52,6 +54,26 @@ export class DashboardController {
     @Query('date') date?: string,
   ) {
     return this.dashboard.stats(agent, parsePeriode(period), date);
+  }
+
+  @ApiOperation({
+    summary: 'Courbe par jour',
+    description:
+      'Un point par jour du Bénin (UTC+1), aujourd’hui compris : encaissé, nombre de versements, avances et retraits nets, rangés par date terrain comme le rapport de caisse. Un AGENT ne lit que la sienne.',
+  })
+  @ApiRequeteZod(lireSerieSchema)
+  @ApiResponse({
+    status: 200,
+    description:
+      '{ du, au, fuseau, agentId, points: [{ date, encaisse, nbVersements, avances, retraitsNets }] } (montants en nombres).',
+  })
+  @ApiErreurs(400, 401, 404)
+  @Get('serie')
+  serie(
+    @CurrentUser() agent: AuthAgent,
+    @Query(new ZodValidationPipe(lireSerieSchema)) query: LireSerieDto,
+  ) {
+    return this.dashboard.serie(agent, query.jours, query.agentId);
   }
 
   @ApiOperation({

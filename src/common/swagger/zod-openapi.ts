@@ -11,6 +11,7 @@ import { ignoreOverride, zodToJsonSchema } from 'zod-to-json-schema';
 import {
   DESCRIPTION_DATE_TERRAIN,
   DESCRIPTION_DATE_TERRAIN_SYNCHRO,
+  DESCRIPTION_HORLOGE_CLIENT,
 } from '@/common/schemas/date-terrain.schema';
 
 /**
@@ -37,7 +38,8 @@ export function versOpenApi(schema: ZodTypeAny): SchemaObject {
     // bon message) : sans cela, la doc n'en montrerait pas le type.
     override: (def) =>
       def.description === DESCRIPTION_DATE_TERRAIN ||
-      def.description === DESCRIPTION_DATE_TERRAIN_SYNCHRO
+      def.description === DESCRIPTION_DATE_TERRAIN_SYNCHRO ||
+      def.description === DESCRIPTION_HORLOGE_CLIENT
         ? {
             type: 'string',
             format: 'date-time',

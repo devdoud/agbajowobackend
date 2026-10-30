@@ -7,7 +7,10 @@ import { CollecteService } from '@/modules/collecte/collecte.service';
 import { AvancesService } from '@/modules/avances/avances.service';
 import { RetraitsService } from '@/modules/retraits/retraits.service';
 import { dateEcheance, parametresGroupe } from '@/domain/parametres-groupe';
+import { ClockService } from '@/common/clock/clock.service';
 import {
+  corrigerDateTerrain,
+  ecartHorloge,
   lireDateTerrain,
   type LectureDateTerrain,
 } from '@/domain/date-terrain';
@@ -41,6 +44,7 @@ export class SyncService {
     private readonly collecte: CollecteService,
     private readonly avances: AvancesService,
     private readonly retraits: RetraitsService,
+    private readonly clock: ClockService,
   ) {}
 
   private scopeGlobal(agent: AuthAgent): boolean {
@@ -53,21 +57,43 @@ export class SyncService {
    * Date terrain d'un mouvement poussé (spec 0003). Une date absente ou illisible
    * n'est tolérée que pour rejouer un mouvement déjà enregistré (anciens lots sans
    * date) : le service le renvoie alors tel quel, sans contrôle de bornes.
+   * Avec un écart d'horloge (spec 0005), la date lue est ramenée à l'heure du serveur.
    */
   private async dateDuMouvement(
     valeur: unknown,
     existant: () => Promise<unknown>,
+    ecartMs: number | null,
   ): Promise<
     | { ok: true; date: Date | undefined }
     | Extract<LectureDateTerrain, { ok: false }>
   > {
     const lu = lireDateTerrain(valeur);
-    if (lu.ok) return lu;
+    if (lu.ok) {
+      const date =
+        ecartMs === null ? lu.date : corrigerDateTerrain(lu.date, ecartMs);
+      return { ok: true, date };
+    }
     if (await existant()) return { ok: true, date: undefined };
     return lu;
   }
 
+  /** Mémorise la dernière synchro de l'app (spec 0005), lue par GET /agents. */
+  private async noterSynchro(agent: AuthAgent, maintenant: Date) {
+    await this.prisma.agent.update({
+      where: { id: agent.id },
+      data: { derniereSyncA: maintenant },
+    });
+  }
+
   async push(agent: AuthAgent, dto: PushDto) {
+    const maintenant = this.clock.now();
+    await this.noterSynchro(agent, maintenant);
+    // Téléphone mal réglé (spec 0005) : écart serveur − téléphone, appliqué à tout le lot.
+    const ecartMs = dto.horlogeClient
+      ? ecartHorloge(dto.horlogeClient, maintenant)
+      : null;
+    const options =
+      ecartMs === null ? {} : { ecartHorlogeS: Math.round(ecartMs / 1000) };
     const applied = {
       membres: [] as unknown[],
       contrats: [] as unknown[],
@@ -107,11 +133,14 @@ export class SyncService {
 
     for (const v of dto.versements) {
       try {
-        const date = await this.dateDuMouvement(v.paidAt, () =>
-          this.prisma.versement.findUnique({
-            where: { idempotencyKey: v.id },
-            select: { id: true },
-          }),
+        const date = await this.dateDuMouvement(
+          v.paidAt,
+          () =>
+            this.prisma.versement.findUnique({
+              where: { idempotencyKey: v.id },
+              select: { id: true },
+            }),
+          ecartMs,
         );
         if (!date.ok) {
           conflicts.push({
@@ -121,10 +150,11 @@ export class SyncService {
           });
           continue;
         }
-        const res = await this.collecte.encaisser(agent, {
-          ...v,
-          paidAt: date.date,
-        });
+        const res = await this.collecte.encaisser(
+          agent,
+          { ...v, paidAt: date.date },
+          options,
+        );
         applied.versements.push({
           id: res.id,
           receiptNumber: res.receiptNumber,
@@ -143,20 +173,24 @@ export class SyncService {
 
     for (const a of dto.avances) {
       try {
-        const date = await this.dateDuMouvement(a.dateAvance, () =>
-          this.prisma.avance.findUnique({
-            where: { idempotencyKey: a.id },
-            select: { id: true },
-          }),
+        const date = await this.dateDuMouvement(
+          a.dateAvance,
+          () =>
+            this.prisma.avance.findUnique({
+              where: { idempotencyKey: a.id },
+              select: { id: true },
+            }),
+          ecartMs,
         );
         if (!date.ok) {
           conflicts.push({ entity: 'avance', id: a.id, reason: date.raison });
           continue;
         }
-        const res = await this.avances.accorder(agent, {
-          ...a,
-          dateAvance: date.date,
-        });
+        const res = await this.avances.accorder(
+          agent,
+          { ...a, dateAvance: date.date },
+          options,
+        );
         applied.avances.push({
           id: res.id,
           receiptNumber: res.receiptNumber,
@@ -170,20 +204,24 @@ export class SyncService {
 
     for (const r of dto.retraits) {
       try {
-        const date = await this.dateDuMouvement(r.dateRetrait, () =>
-          this.prisma.retrait.findUnique({
-            where: { idempotencyKey: r.id },
-            select: { id: true },
-          }),
+        const date = await this.dateDuMouvement(
+          r.dateRetrait,
+          () =>
+            this.prisma.retrait.findUnique({
+              where: { idempotencyKey: r.id },
+              select: { id: true },
+            }),
+          ecartMs,
         );
         if (!date.ok) {
           conflicts.push({ entity: 'retrait', id: r.id, reason: date.raison });
           continue;
         }
-        const res = await this.retraits.effectuer(agent, {
-          ...r,
-          dateRetrait: date.date,
-        });
+        const res = await this.retraits.effectuer(
+          agent,
+          { ...r, dateRetrait: date.date },
+          options,
+        );
         applied.retraits.push({
           id: res.id,
           receiptNumber: res.receiptNumber,
@@ -298,6 +336,7 @@ export class SyncService {
    * au `limit`-ième plus petit `server_seq` : la fenêtre est ainsi complète et sans trou.
    */
   async pull(agent: AuthAgent, since: bigint, limit: number) {
+    await this.noterSynchro(agent, this.clock.now());
     const membreWhere: Prisma.MembreWhereInput = this.scopeGlobal(agent)
       ? { serverSeq: { gt: since } }
       : { serverSeq: { gt: since }, ownerId: agent.id };

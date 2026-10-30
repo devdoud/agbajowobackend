@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import { DESCRIPTION_DATE_TERRAIN_SYNCHRO } from '@/common/schemas/date-terrain.schema';
+import {
+  DESCRIPTION_DATE_TERRAIN_SYNCHRO,
+  horlogeClientSchema,
+} from '@/common/schemas/date-terrain.schema';
 
 const membrePush = z.object({
   id: z.string().uuid(),
@@ -57,6 +60,8 @@ const retraitPush = z.object({
 
 /** Lot de mutations locales poussées par un agent, ordonnées par dépendances. */
 export const pushSchema = z.object({
+  // Heure du téléphone à l'envoi : corrige les dates terrain d'un téléphone mal réglé (spec 0005).
+  horlogeClient: horlogeClientSchema.optional(),
   membres: z.array(membrePush).default([]),
   contrats: z.array(contratPush).default([]),
   versements: z.array(versementPush).default([]),
