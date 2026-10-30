@@ -1,7 +1,7 @@
 # 0003. Règles des dates terrain des mouvements
 
 **Date**: 2026-10-29
-**Status**: Accepted
+**Status**: Accepted, amended by [0005](../0005-pilotage-terrain/index.md) (correction de l'horloge du téléphone en synchro)
 
 ## Summary
 
