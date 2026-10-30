@@ -127,7 +127,7 @@ async function main() {
     const lot = {
       membres: [{ id: mId, nom: 'Sync', prenoms: 'Push', telephone: '22970000999', dateNaissance: '1990-01-01', lieuNaissance: 'X', profession: 'Y', quartier: 'Z', arrondissement: '1', commune: 'C', photoId: media.id, dateSouscription: '2026-07-01', updatedAt: now }],
       contrats: [{ id: cId, membreId: mId, groupe: 'GROUPE_1', miseAmount: 1000, startDate: '2026-07-01', updatedAt: now }],
-      versements: [{ id: vId, contratId: cId, misesCount: 1 }],
+      versements: [{ id: vId, contratId: cId, misesCount: 1, paidAt: new Date().toISOString() }],
     };
     const push = await J(await post('/sync/push', HJ, lot));
     ok('push : 1 membre + 1 contrat + 1 versement, 0 conflit', push.applied.membres.length === 1 && push.applied.versements.length === 1 && push.conflicts.length === 0, JSON.stringify(push.conflicts));

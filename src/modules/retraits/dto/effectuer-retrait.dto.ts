@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { dateTerrainSchema } from '@/common/schemas/date-terrain.schema';
 
 export const effectuerRetraitSchema = z
   .object({
@@ -6,7 +7,7 @@ export const effectuerRetraitSchema = z
     contratId: z.string().uuid(),
     type: z.enum(['PARTIEL', 'TOTAL']),
     montant: z.coerce.number().int().positive().optional(),
-    dateRetrait: z.coerce.date().optional(),
+    dateRetrait: dateTerrainSchema.optional(),
   })
   .refine((d) => d.type === 'TOTAL' || d.montant !== undefined, {
     message: 'Le montant est requis pour un retrait partiel.',

@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { requestId } from './common/middleware/request-id.middleware';
+import { configurerSwagger } from './common/swagger/swagger';
 import type { Env } from './config/env.validation';
 
 /**
@@ -28,4 +29,9 @@ export function configurerApp(app: INestApplication): void {
     origin: config.get('CORS_ORIGIN', { infer: true }),
     credentials: true,
   });
+
+  // Après le préfixe : le document décrit les routes telles qu'elles sont servies.
+  if (config.get('SWAGGER_ENABLED', { infer: true })) {
+    configurerSwagger(app);
+  }
 }

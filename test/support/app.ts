@@ -5,6 +5,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '@/app.module';
 import { configurerApp } from '@/app.setup';
+import { ClockService } from '@/common/clock/clock.service';
 import { PrismaService } from '@/prisma/prisma.service';
 
 export interface AppDeTest {
@@ -15,16 +16,23 @@ export interface AppDeTest {
 /**
  * Monte la vraie application (même configuration que la prod via `configurerApp`).
  * La limite de débit est neutralisée par défaut pour que la suite ne tombe pas en 429 ;
- * `limiteDeDebit: true` la garde active (test dédié).
+ * `limiteDeDebit: true` la garde active (test dédié). `horloge` fige l'heure du
+ * serveur (`ClockService`) pour tester des bornes exactes.
  */
 export async function creerAppDeTest(
-  opts: { limiteDeDebit?: boolean } = {},
+  opts: { limiteDeDebit?: boolean; horloge?: Date } = {},
 ): Promise<AppDeTest> {
   let builder = Test.createTestingModule({ imports: [AppModule] });
   if (!opts.limiteDeDebit) {
     builder = builder
       .overrideProvider(ThrottlerGuard)
       .useValue({ canActivate: () => true });
+  }
+  const { horloge } = opts;
+  if (horloge) {
+    builder = builder
+      .overrideProvider(ClockService)
+      .useValue({ now: () => new Date(horloge) });
   }
   const moduleRef = await builder.compile();
 

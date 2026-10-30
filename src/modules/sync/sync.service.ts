@@ -7,6 +7,10 @@ import { CollecteService } from '@/modules/collecte/collecte.service';
 import { AvancesService } from '@/modules/avances/avances.service';
 import { RetraitsService } from '@/modules/retraits/retraits.service';
 import { dateEcheance, parametresGroupe } from '@/domain/parametres-groupe';
+import {
+  lireDateTerrain,
+  type LectureDateTerrain,
+} from '@/domain/date-terrain';
 import type { AuthAgent } from '@/modules/auth/types';
 import type { PushDto, MembrePush, ContratPush } from './dto/push.dto';
 
@@ -44,6 +48,24 @@ export class SyncService {
   }
 
   // ─────────────────────────── PUSH ───────────────────────────
+
+  /**
+   * Date terrain d'un mouvement poussé (spec 0003). Une date absente ou illisible
+   * n'est tolérée que pour rejouer un mouvement déjà enregistré (anciens lots sans
+   * date) : le service le renvoie alors tel quel, sans contrôle de bornes.
+   */
+  private async dateDuMouvement(
+    valeur: unknown,
+    existant: () => Promise<unknown>,
+  ): Promise<
+    | { ok: true; date: Date | undefined }
+    | Extract<LectureDateTerrain, { ok: false }>
+  > {
+    const lu = lireDateTerrain(valeur);
+    if (lu.ok) return lu;
+    if (await existant()) return { ok: true, date: undefined };
+    return lu;
+  }
 
   async push(agent: AuthAgent, dto: PushDto) {
     const applied = {
@@ -85,7 +107,24 @@ export class SyncService {
 
     for (const v of dto.versements) {
       try {
-        const res = await this.collecte.encaisser(agent, v);
+        const date = await this.dateDuMouvement(v.paidAt, () =>
+          this.prisma.versement.findUnique({
+            where: { idempotencyKey: v.id },
+            select: { id: true },
+          }),
+        );
+        if (!date.ok) {
+          conflicts.push({
+            entity: 'versement',
+            id: v.id,
+            reason: date.raison,
+          });
+          continue;
+        }
+        const res = await this.collecte.encaisser(agent, {
+          ...v,
+          paidAt: date.date,
+        });
         applied.versements.push({
           id: res.id,
           receiptNumber: res.receiptNumber,
@@ -104,7 +143,20 @@ export class SyncService {
 
     for (const a of dto.avances) {
       try {
-        const res = await this.avances.accorder(agent, a);
+        const date = await this.dateDuMouvement(a.dateAvance, () =>
+          this.prisma.avance.findUnique({
+            where: { idempotencyKey: a.id },
+            select: { id: true },
+          }),
+        );
+        if (!date.ok) {
+          conflicts.push({ entity: 'avance', id: a.id, reason: date.raison });
+          continue;
+        }
+        const res = await this.avances.accorder(agent, {
+          ...a,
+          dateAvance: date.date,
+        });
         applied.avances.push({
           id: res.id,
           receiptNumber: res.receiptNumber,
@@ -118,7 +170,20 @@ export class SyncService {
 
     for (const r of dto.retraits) {
       try {
-        const res = await this.retraits.effectuer(agent, r);
+        const date = await this.dateDuMouvement(r.dateRetrait, () =>
+          this.prisma.retrait.findUnique({
+            where: { idempotencyKey: r.id },
+            select: { id: true },
+          }),
+        );
+        if (!date.ok) {
+          conflicts.push({ entity: 'retrait', id: r.id, reason: date.raison });
+          continue;
+        }
+        const res = await this.retraits.effectuer(agent, {
+          ...r,
+          dateRetrait: date.date,
+        });
         applied.retraits.push({
           id: res.id,
           receiptNumber: res.receiptNumber,

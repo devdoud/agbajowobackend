@@ -6,11 +6,11 @@ L'app des agents terrain travaille hors ligne puis synchronise avec ce module. `
 
 ## Key files
 
-| File | Owns |
-|---|---|
-| `sync.service.ts` | Logique push (application par entité, conflits) et pull (lecture par curseur) |
-| `dto/push.dto.ts` | Schéma Zod du lot poussé (membres, contrats, versements, avances, retraits) |
-| `sync.controller.ts` | Routes push et pull |
+| File                 | Owns                                                                          |
+| -------------------- | ----------------------------------------------------------------------------- |
+| `sync.service.ts`    | Logique push (application par entité, conflits) et pull (lecture par curseur) |
+| `dto/push.dto.ts`    | Schéma Zod du lot poussé (membres, contrats, versements, avances, retraits)   |
+| `sync.controller.ts` | Routes push et pull                                                           |
 
 ## Conventions
 
