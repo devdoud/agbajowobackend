@@ -165,7 +165,7 @@ export class RetraitsService {
             interetDu: BigInt(interetPreleve),
             montantNet: BigInt(montantNet),
             dateRetrait: dateTerrain,
-            receiptNumber: await prochainRecu(tx),
+            receiptNumber: await prochainRecu(tx, maintenant),
             idempotencyKey: id,
           },
         });

@@ -101,7 +101,7 @@ export class CollecteService {
             paidAt: dateTerrain,
             numeroMiseDebut: plage.debut,
             numeroMiseFin: plage.fin,
-            receiptNumber: await prochainRecu(tx),
+            receiptNumber: await prochainRecu(tx, maintenant),
             idempotencyKey: id,
           },
         });
