@@ -37,6 +37,14 @@ describe('validateEnv (spec 0004)', () => {
     expect(env.CORS_ORIGIN).toBe('https://admin.exemple.bj');
   });
 
+  it('retire la barre oblique finale de CORS_ORIGIN', () => {
+    const env = validateEnv({
+      ...BASE,
+      CORS_ORIGIN: 'https://agbajowo.vercel.app/',
+    });
+    expect(env.CORS_ORIGIN).toBe('https://agbajowo.vercel.app');
+  });
+
   it('exige les cinq variables S3 avec MEDIA_DRIVER=s3', () => {
     const incomplet = { ...S3, S3_BUCKET: undefined };
 

@@ -76,7 +76,10 @@ export const envSchema = champs
   })
   .transform((env) => ({
     ...env,
-    CORS_ORIGIN: env.CORS_ORIGIN ?? 'http://localhost:3000',
+    // Le navigateur envoie l'origine sans barre finale : une URL collée avec « / » ne
+    // correspondrait jamais.
+    CORS_ORIGIN:
+      env.CORS_ORIGIN?.replace(/\/+$/, '') ?? 'http://localhost:3000',
   }));
 
 export type Env = z.infer<typeof envSchema>;
