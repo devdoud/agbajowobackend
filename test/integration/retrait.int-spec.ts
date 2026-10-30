@@ -9,7 +9,12 @@ import {
   type CorpsErreur,
 } from '../support/app';
 import { viderBase } from '../support/base';
-import { creerAgent, creerContrat, creerMembre } from '../support/fabriques';
+import {
+  creerAgent,
+  creerAvance,
+  creerContrat,
+  creerMembre,
+} from '../support/fabriques';
 
 const FORMAT_RECU = /^REC-\d{8}-\d{5}$/;
 
@@ -150,6 +155,39 @@ describe('POST /api/v1/retraits (retrait)', () => {
     });
     expect(totaux._sum.montantBrut).toBe(5000n);
     expect(totaux._sum.montantNet).toBe(4500n);
+  });
+
+  it('le soldeNet du contrat suit les retraits : récupérable restant, puis 0 après le total', async () => {
+    // 5000 brut, 500 de commission, avance de 1000 à 250 d'intérêt : 3250 récupérables.
+    const { contrat, jeton } = await contratAvecMises(10);
+    await creerAvance(ctx.prisma, contrat, contrat.ownerId, {
+      montant: 1000n,
+      interet: 250n,
+    });
+    const soldeNet = async () => {
+      const res = await request(http)
+        .get(`/api/v1/contrats/${contrat.id}`)
+        .set('Authorization', `Bearer ${jeton}`);
+      expect(res.status).toBe(200);
+      return corps<{ derive: { soldeNet: number } }>(res).derive.soldeNet;
+    };
+
+    expect(await soldeNet()).toBe(3250);
+
+    // Partiel de 1000 : commission et intérêt prélevés une fois (1750 brut).
+    await retirer(jeton, {
+      contratId: contrat.id,
+      type: 'PARTIEL',
+      montant: 1000,
+    }).expect(201);
+    expect(await soldeNet()).toBe(2250);
+
+    const total = await retirer(jeton, {
+      contratId: contrat.id,
+      type: 'TOTAL',
+    });
+    expect(corps<CorpsRetrait>(total).montantNet).toBe('2250');
+    expect(await soldeNet()).toBe(0);
   });
 
   it('refuse un partiel supérieur au récupérable, sans rien écrire', async () => {
