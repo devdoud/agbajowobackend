@@ -17,6 +17,9 @@ const champs = z.object({
   CORS_ORIGIN: z.string().min(1).optional(),
   // Nombre de proxys de confiance devant l'API (Render : 1). 0 = aucun.
   TRUST_PROXY: z.coerce.number().int().min(0).default(0),
+  // En-tête qui porte l'IP du client, posé par l'hébergeur (Render : true-client-ip).
+  // Absent = `req.ip`. Ne le régler que si l'hébergeur écrase la valeur envoyée par le client.
+  CLIENT_IP_HEADER: z.string().min(1).optional(),
 
   // Base de données (L1) — requis
   DATABASE_URL: z.string().url(),

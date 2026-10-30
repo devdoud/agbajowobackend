@@ -20,6 +20,10 @@ services:
         value: 'false'
       - key: TRUST_PROXY
         value: '1'
+      # Cloudflare est devant le proxy de Render : req.ip y est une IP Cloudflare.
+      # La limite de débit lit donc l'IP du client dans True-Client-IP.
+      - key: CLIENT_IP_HEADER
+        value: true-client-ip
       - key: MEDIA_DRIVER
         value: s3
       - key: MEDIA_MAX_BYTES
