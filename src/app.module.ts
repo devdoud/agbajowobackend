@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { validateEnv } from './config/env.validation';
+import { suivreIpClient } from './common/ip-client';
+import { type Env, validateEnv } from './config/env.validation';
 import { AppController } from './app.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { ClockModule } from './common/clock/clock.module';
@@ -25,7 +26,15 @@ import { CaisseModule } from './modules/caisse/caisse.module';
       isGlobal: true,
       validate: validateEnv,
     }),
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<Env, true>) => ({
+        throttlers: [{ ttl: 60_000, limit: 100 }],
+        getTracker: suivreIpClient(
+          config.get('CLIENT_IP_HEADER', { infer: true }),
+        ),
+      }),
+    }),
     PrismaModule,
     ClockModule,
     AuthModule,
