@@ -286,6 +286,7 @@ export class CaisseService {
         recuServeurA: v.createdAt,
         sortie: {
           receiptNumber: v.receiptNumber,
+          ecartHorlogeS: v.ecartHorlogeS,
           montant: v.amount,
           contratId: v.contratId,
           membre: v.contrat.membre,
@@ -300,6 +301,7 @@ export class CaisseService {
         recuServeurA: a.createdAt,
         sortie: {
           receiptNumber: a.receiptNumber,
+          ecartHorlogeS: a.ecartHorlogeS,
           montant: a.montant,
           contratId: a.contratId,
           membre: a.contrat.membre,
@@ -313,6 +315,7 @@ export class CaisseService {
         recuServeurA: r.createdAt,
         sortie: {
           receiptNumber: r.receiptNumber,
+          ecartHorlogeS: r.ecartHorlogeS,
           montant: r.montantNet,
           contratId: r.contratId,
           membre: r.contrat.membre,

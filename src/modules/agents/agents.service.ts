@@ -21,6 +21,8 @@ const CHAMPS_PUBLICS = {
   numeroAgent: true,
   actif: true,
   mustChangePassword: true,
+  // Dernier push ou pull de l'app (spec 0005) ; null : jamais synchronisé.
+  derniereSyncA: true,
   createdAt: true,
 } satisfies Prisma.AgentSelect;
 

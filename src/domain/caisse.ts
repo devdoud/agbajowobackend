@@ -180,3 +180,34 @@ export function calculerRapportCaisse(
     arriveesTardives,
   };
 }
+
+/** Un jour de la courbe du tableau de bord (spec 0005). Montants en FCFA. */
+export interface PointSerie {
+  date: string;
+  encaisse: number;
+  nbVersements: number;
+  avances: number;
+  retraitsNets: number;
+}
+
+/** Les `n` jours du Bénin qui finissent par `dernierJour` inclus, du plus ancien au plus récent. */
+export function joursDeLaSerie(dernierJour: string, n: number): string[] {
+  const { debut } = bornesJour(dernierJour);
+  return Array.from({ length: n }, (_, i) =>
+    jourBenin(new Date(debut.getTime() - (n - 1 - i) * MS_PAR_JOUR)),
+  );
+}
+
+/** Un point par jour, à zéro les jours sans mouvement ; les jours inconnus sont ignorés. */
+export function remplirSerie(
+  jours: string[],
+  sommes: Partial<Record<string, Partial<Omit<PointSerie, 'date'>>>>,
+): PointSerie[] {
+  return jours.map((date) => ({
+    date,
+    encaisse: sommes[date]?.encaisse ?? 0,
+    nbVersements: sommes[date]?.nbVersements ?? 0,
+    avances: sommes[date]?.avances ?? 0,
+    retraitsNets: sommes[date]?.retraitsNets ?? 0,
+  }));
+}

@@ -9,8 +9,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   // Pooler en mode session pour les migrations (spec 0004) ; en dev et tests = DATABASE_URL.
   directUrl = env("DIRECT_URL")
 }
@@ -52,20 +52,22 @@ enum TypeMedia {
 // ───────────────────────── Agents ─────────────────────────
 
 model Agent {
-  id           String    @id @db.Uuid
-  nom          String
-  telephone    String    @unique
-  passwordHash String    @map("password_hash")
-  role         RoleAgent @default(AGENT)
+  id                 String    @id @db.Uuid
+  nom                String
+  telephone          String    @unique
+  passwordHash       String    @map("password_hash")
+  role               RoleAgent @default(AGENT)
   // Petit numéro unique servant de préfixe aux codes membres (ex. « 1 » → « 1-014 »).
-  numeroAgent  Int?      @unique @map("numero_agent")
-  actif        Boolean   @default(true)
+  numeroAgent        Int?      @unique @map("numero_agent")
+  actif              Boolean   @default(true)
   // Vrai après création/réinitialisation par un superviseur : l'agent doit
   // changer son mot de passe à la prochaine connexion.
-  mustChangePassword Boolean @default(false) @map("must_change_password")
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(6)
+  mustChangePassword Boolean   @default(false) @map("must_change_password")
+  // Dernier push ou pull de l'app (spec 0005) : le pilotage voit qui ne synchronise plus.
+  derniereSyncA      DateTime? @map("derniere_sync_a") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt          DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   membres       Membre[]
   versements    Versement[]
@@ -192,6 +194,9 @@ model Versement {
   numeroMiseFin   Int?     @map("numero_mise_fin")
   receiptNumber   String?  @unique @map("receipt_number")
   idempotencyKey  String   @unique @map("idempotency_key") @db.Uuid
+  // Écart corrigé de l'horloge du téléphone, en secondes (serveur − téléphone, spec 0005).
+  // null : date terrain reçue telle quelle.
+  ecartHorlogeS   Int?     @map("ecart_horloge_s")
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   serverSeq       BigInt   @default(dbgenerated("nextval('sync_seq'::regclass)")) @map("server_seq")
 
@@ -218,6 +223,9 @@ model Avance {
   dateAvance        DateTime @map("date_avance") @db.Timestamptz(6)
   receiptNumber     String?  @unique @map("receipt_number")
   idempotencyKey    String   @unique @map("idempotency_key") @db.Uuid
+  // Écart corrigé de l'horloge du téléphone, en secondes (serveur − téléphone, spec 0005).
+  // null : date terrain reçue telle quelle.
+  ecartHorlogeS     Int?     @map("ecart_horloge_s")
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   serverSeq         BigInt   @default(dbgenerated("nextval('sync_seq'::regclass)")) @map("server_seq")
 
@@ -244,6 +252,9 @@ model Retrait {
   dateRetrait        DateTime    @map("date_retrait") @db.Timestamptz(6)
   receiptNumber      String?     @unique @map("receipt_number")
   idempotencyKey     String      @unique @map("idempotency_key") @db.Uuid
+  // Écart corrigé de l'horloge du téléphone, en secondes (serveur − téléphone, spec 0005).
+  // null : date terrain reçue telle quelle.
+  ecartHorlogeS      Int?        @map("ecart_horloge_s")
   createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   serverSeq          BigInt      @default(dbgenerated("nextval('sync_seq'::regclass)")) @map("server_seq")
 

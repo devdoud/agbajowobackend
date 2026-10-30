@@ -30,7 +30,12 @@ export class CollecteService {
    * transactionnel : calcule les numéros de mises, attribue le reçu, et clôt le
    * contrat (TERMINE) si l'objectif est atteint.
    */
-  async encaisser(agent: AuthAgent, dto: EncaisserDto) {
+  async encaisser(
+    agent: AuthAgent,
+    dto: EncaisserDto,
+    // Écart d'horloge corrigé par la synchro (spec 0005), gardé sur le mouvement.
+    { ecartHorlogeS }: { ecartHorlogeS?: number } = {},
+  ) {
     const id = dto.id ?? randomUUID();
 
     const existant = await this.prisma.versement.findUnique({
@@ -103,6 +108,7 @@ export class CollecteService {
             numeroMiseFin: plage.fin,
             receiptNumber: await prochainRecu(tx, maintenant),
             idempotencyKey: id,
+            ecartHorlogeS: ecartHorlogeS ?? null,
           },
         });
 

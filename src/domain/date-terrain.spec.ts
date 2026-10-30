@@ -1,5 +1,7 @@
 import {
   RAISONS_DATE_TERRAIN,
+  corrigerDateTerrain,
+  ecartHorloge,
   lireDateTerrain,
   verifierBornesDateTerrain,
 } from './date-terrain';
@@ -116,6 +118,40 @@ describe('RAISONS_DATE_TERRAIN', () => {
     );
     expect(RAISONS_DATE_TERRAIN.ancienne).toBe(
       "Date terrain trop ancienne : au plus 30 jours avant l'heure du serveur.",
+    );
+  });
+});
+
+describe('ecartHorloge', () => {
+  const maintenant = new Date('2026-10-30T12:00:00.000Z');
+  const minutes = (n: number) => n * 60_000;
+
+  it('ignore un écart dans la tolérance (bornes incluses)', () => {
+    expect(
+      ecartHorloge(new Date('2026-10-30T12:15:00.000Z'), maintenant),
+    ).toBeNull();
+    expect(
+      ecartHorloge(new Date('2026-10-30T11:45:00.000Z'), maintenant),
+    ).toBeNull();
+  });
+
+  it('renvoie serveur − téléphone au-delà de 15 minutes', () => {
+    // Téléphone en avance de 2 h : écart négatif.
+    expect(ecartHorloge(new Date('2026-10-30T14:00:00.000Z'), maintenant)).toBe(
+      -minutes(120),
+    );
+    // Téléphone en retard de 15 min et 1 ms.
+    expect(ecartHorloge(new Date('2026-10-30T11:44:59.999Z'), maintenant)).toBe(
+      minutes(15) + 1,
+    );
+  });
+});
+
+describe('corrigerDateTerrain', () => {
+  it("ramène une date du téléphone à l'heure du serveur", () => {
+    const date = new Date('2026-10-30T13:58:00.000Z');
+    expect(corrigerDateTerrain(date, -120 * 60_000).toISOString()).toBe(
+      '2026-10-30T11:58:00.000Z',
     );
   });
 });

@@ -18,7 +18,9 @@ L'app des agents terrain travaille hors ligne puis synchronise avec ce module. `
 - Ordre d'application fixe, par dépendance : membres, puis contrats, versements, avances, retraits.
 - Une entité refusée ne fait pas échouer le lot : elle va dans `conflicts` (`{ entity, id, reason }`), les autres sont appliquées. La réponse renvoie aussi le curseur courant `serverSeq`.
 - Les identifiants sont des UUID générés par le client ; les écritures sont idempotentes, donc un même lot poussé deux fois ne crée pas de doublon.
-- Le pull filtre `server_seq > since`, trié par ordre croissant, borné par `limit`, et applique la portée par rôle (un `AGENT` ne reçoit que ses données).
+- Le pull filtre `server_seq > since`, trié par ordre croissant, borné par `limit`, et applique la portée par rôle : un `AGENT` reçoit ses membres et contrats, et les mouvements qu'il a saisis ou qui portent sur ses contrats (même saisis par un superviseur).
+- Chaque push et chaque pull écrit `agents.derniere_sync_a` (spec 0005), lu par `GET /agents`.
+- `horlogeClient` (facultatif, spec 0005) : si l'écart avec `ClockService` dépasse 15 min, `dateDuMouvement` corrige chaque date lue de cet écart avant les bornes du spec 0003, et les services reçoivent `{ ecartHorlogeS }` en troisième argument pour le garder sur le mouvement. Jamais sur un rejeu, jamais sur les routes directes.
 
 ## Gotchas
 

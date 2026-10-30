@@ -122,21 +122,22 @@ Toutes les routes métier sont ouvertes aux trois rôles, sauf `/agents` et `GET
 
 ### Comptes agents (SUPERVISEUR, ADMIN)
 
-| Route               | Corps / paramètres                                                                                                                              | Réponse                                                                                                                                    |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET /agents`       |                                                                                                                                                 | Liste de comptes `{ id, nom, telephone, role, numeroAgent, actif, mustChangePassword, createdAt }`. Un SUPERVISEUR ne voit que les `AGENT` |
-| `POST /agents`      | `{ "nom": "...", "telephone": "...", "role": "AGENT" }` (`role` : `AGENT` par défaut ; un SUPERVISEUR ne peut créer que des `AGENT`, sinon 403) | **201** `{ agent, motDePasseTemporaire }`                                                                                                  |
-| `PATCH /agents/:id` | au moins un de `{ "actif": false, "role": "SUPERVISEUR", "reinitialiserMotDePasse": true }`                                                     | **200** `{ agent, motDePasseTemporaire }` (`motDePasseTemporaire` seulement si réinitialisé)                                               |
+| Route               | Corps / paramètres                                                                                                                              | Réponse                                                                                                                                                   |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /agents`       |                                                                                                                                                 | Liste de comptes `{ id, nom, telephone, role, numeroAgent, actif, mustChangePassword, derniereSyncA, createdAt }`. Un SUPERVISEUR ne voit que les `AGENT` |
+| `POST /agents`      | `{ "nom": "...", "telephone": "...", "role": "AGENT" }` (`role` : `AGENT` par défaut ; un SUPERVISEUR ne peut créer que des `AGENT`, sinon 403) | **201** `{ agent, motDePasseTemporaire }`                                                                                                                 |
+| `PATCH /agents/:id` | au moins un de `{ "actif": false, "role": "SUPERVISEUR", "reinitialiserMotDePasse": true }`                                                     | **200** `{ agent, motDePasseTemporaire }` (`motDePasseTemporaire` seulement si réinitialisé)                                                              |
 
 Le mot de passe temporaire n'est renvoyé **qu'une seule fois** : l'afficher clairement pour qu'il soit noté. Personne ne peut modifier son propre compte. Erreurs : 409 si le téléphone est déjà pris.
 
 ### Membres
 
-| Route                            | Corps / paramètres                                                                            | Réponse                                                            |
-| -------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `POST /membres`                  | voir ci-dessous                                                                               | **201**, le membre                                                 |
-| `GET /membres?q=&limit=&cursor=` | `q` cherche dans nom, prénoms, numéro, code et téléphone ; `limit` de 1 à 200 (50 par défaut) | `{ data: Membre[], nextCursor: string \| null, hasMore: boolean }` |
-| `GET /membres/:id`               |                                                                                               | Le membre avec `contrats: Contrat[]`                               |
+| Route                                        | Corps / paramètres                                                                            | Réponse                                                            |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `POST /membres`                              | voir ci-dessous                                                                               | **201**, le membre                                                 |
+| `GET /membres?q=&limit=&cursor=`             | `q` cherche dans nom, prénoms, numéro, code et téléphone ; `limit` de 1 à 200 (50 par défaut) | `{ data: Membre[], nextCursor: string \| null, hasMore: boolean }` |
+| `GET /membres/:id`                           |                                                                                               | Le membre avec `contrats: Contrat[]`                               |
+| `GET /membres/verifier-telephone?telephone=` | numéro à vérifier (au moins 8 chiffres)                                                       | `{ existe, membres: [...] }`, voir ci-dessous                      |
 
 Corps de création :
 
@@ -161,6 +162,26 @@ Corps de création :
 Obligatoires : `nom` et `prenoms` (2 caractères au moins), `profession`, `quartier`. Le reste est facultatif. Le serveur attribue `numeroMembre` (`MBR-00012`). La photo s'envoie **avant** (voir Médias) ; un `photoId` inconnu donne 400.
 
 Objet `Membre` : `id, ownerId, numeroMembre, codeMembre, nom, prenoms, telephone, dateNaissance, lieuNaissance, profession, quartier, arrondissement, commune, photoId, dateSouscription, createdAt, updatedAt, serverSeq, version, deletedAt`.
+
+**Vérifier un numéro avant d'inscrire un membre** (doublons entre agents, spec 0005) : `GET /membres/verifier-telephone?telephone=97000001` cherche chez **tous** les membres, quel que soit l'agent. Seuls les chiffres comptent, et l'indicatif 229 est ignoré : `+229 97 00 00 01`, `22997000001` et `97000001` sont le même numéro.
+
+```json
+{
+  "existe": true,
+  "membres": [
+    {
+      "id": null,
+      "numeroMembre": "MBR-00042",
+      "nom": null,
+      "prenoms": null,
+      "estAMoi": false,
+      "agent": { "nom": "Agent Nord", "numeroAgent": 7 }
+    }
+  ]
+}
+```
+
+Pour un AGENT, `id`, `nom` et `prenoms` sont `null` sur les membres d'un autre agent : afficher « Ce numéro est déjà suivi par Agent Nord (MBR-00042) » et l'inviter à voir son superviseur. SUPERVISEUR et ADMIN reçoivent la fiche et `agent.id`. C'est un avertissement : l'API n'empêche pas d'inscrire le membre.
 
 **Pagination** : passer `nextCursor` comme `cursor` à l'appel suivant tant que `hasMore` est vrai.
 
@@ -294,11 +315,41 @@ Réponse : `{ id, contratId, agentId, type, montantBrut, commissionPrelevee, int
 | Route                  | Paramètres                                                                                                | Réponse                                                                                                                                         |
 | ---------------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET /dashboard/stats` | `period` : `today` (défaut), `yesterday`, `week`, `month`, `custom` ; `date` (`YYYY-MM-DD`) pour `custom` | `{ periode, collecte, attenduJournalier, contratsActifs, payes, aCollecter, enRetard, nouveauxMembres, commissions, avancesEnCours }` (nombres) |
+| `GET /dashboard/serie` | `jours` (1 à 90, 14 par défaut), `agentId` (facultatif)                                                   | Courbe par jour, voir ci-dessous                                                                                                                |
 | `GET /dashboard/file`  | `period`, `date`, `statut` (`paye`, `a_collecter`, `en_retard`, `termine`), `q` (nom du membre)           | `{ data: Ligne[], total }`, triée par priorité (en retard d'abord)                                                                              |
 
 `Ligne` : `{ contratId, groupe, miseAmount, membre: { id, numeroMembre, nom, prenoms, telephone, quartier }, misesVersees, soldeBrut, statutCollecte }` (montants en nombres).
 
 Un AGENT ne voit que ses contrats ; SUPERVISEUR et ADMIN voient tout.
+
+**Courbe par jour** (`GET /dashboard/serie?jours=14`, spec 0005) : un point par jour du Bénin, aujourd'hui compris, du plus ancien au plus récent, à zéro les jours sans mouvement. Un mouvement compte au jour de sa date terrain, comme dans le rapport de caisse. Montants en **nombres**.
+
+```json
+{
+  "du": "2026-10-17",
+  "au": "2026-10-30",
+  "fuseau": "Africa/Porto-Novo",
+  "agentId": null,
+  "points": [
+    {
+      "date": "2026-10-17",
+      "encaisse": 0,
+      "nbVersements": 0,
+      "avances": 0,
+      "retraitsNets": 0
+    },
+    {
+      "date": "2026-10-18",
+      "encaisse": 15500,
+      "nbVersements": 12,
+      "avances": 10000,
+      "retraitsNets": 1000
+    }
+  ]
+}
+```
+
+Un AGENT ne lit que la sienne (`agentId` d'un autre : 404). SUPERVISEUR et ADMIN lisent tous les agents (`agentId: null`) ou un seul avec `agentId`. Plus besoin de télécharger la base pour tracer la courbe.
 
 ### Rapport de caisse
 
@@ -326,7 +377,8 @@ Totaux (montants en **chaînes**) :
 
 Rapport d'un compte : `{ agent: { id, nom, role, actif, supprime }, date, fuseau, genereA, totaux, soldeNegatif, arriveesTardives, lignes, receptionsTardives }`.
 
-- `lignes` : un reçu par ligne, avec `type` (`VERSEMENT`, `AVANCE`, `RETRAIT`), `dateTerrain`, `recuServeurA`, `arriveeTardive`, `receiptNumber`, `montant`, `contratId`, `membre: { id, nom, prenoms, numeroMembre, codeMembre }`, plus les champs propres au type (`misesCount` ; `typeRetrait`, `montantBrut`, `commissionPrelevee`, `interetDu`).
+- `lignes` : un reçu par ligne, avec `type` (`VERSEMENT`, `AVANCE`, `RETRAIT`), `dateTerrain`, `recuServeurA`, `arriveeTardive`, `receiptNumber`, `montant`, `contratId`, `membre: { id, nom, prenoms, numeroMembre, codeMembre }`, plus les champs propres au type (`misesCount` ; `typeRetrait`, `montantBrut`, `commissionPrelevee`, `interetDu`), et `ecartHorlogeS`.
+- `ecartHorlogeS` : `null` en général. Un nombre de secondes quand la date venait d'un téléphone mal réglé et a été corrigée par le serveur (négatif : le téléphone était en avance). À signaler, par exemple « heure du téléphone corrigée de −2 h ».
 - `arriveeTardive` : mouvement daté de ce jour mais reçu par le serveur plus tard (synchro hors ligne).
 - `receptionsTardives` : mouvements reçus ce jour mais datés de jours précédents, avec un récapitulatif `parJour`. Ils ne sont **pas** dans les totaux du jour : ce sont des corrections des jours passés.
 
@@ -336,7 +388,9 @@ La synthèse (`GET /caisse`) a la même structure de totaux, avec `agents: [{ ag
 
 Réservé à l'app mobile des agents ; le back office n'en a normalement pas besoin.
 
-- `POST /sync/push` : `{ membres: [], contrats: [], versements: [], avances: [], retraits: [] }`, mêmes champs que les routes directes, avec `id` **obligatoire** partout, et des dates terrain obligatoires. Réponse **200** `{ applied: { membres, contrats, versements, avances, retraits }, conflicts: [{ entity, id, reason }], serverSeq }`. Une entité refusée devient un conflit, les autres sont appliquées.
+- `POST /sync/push` : `{ horlogeClient, membres: [], contrats: [], versements: [], avances: [], retraits: [] }`, mêmes champs que les routes directes, avec `id` **obligatoire** partout, et des dates terrain obligatoires. Réponse **200** `{ applied: { membres, contrats, versements, avances, retraits }, conflicts: [{ entity, id, reason }], serverSeq }`. Une entité refusée devient un conflit, les autres sont appliquées.
+- **`horlogeClient`** (spec 0005) : envoyer `new Date().toISOString()` au moment de chaque push. Si l'heure du téléphone s'écarte de plus de 15 minutes de celle du serveur, le serveur corrige de cet écart toutes les dates terrain du lot avant de les contrôler, et garde l'écart sur chaque mouvement (`ecartHorlogeS`). Sans `horlogeClient`, un téléphone en avance de plus de 15 minutes voit ses mouvements refusés en conflit (« Date terrain dans le futur… »). Mal formé : 400 pour tout le lot.
+- Chaque push et chaque pull met à jour `derniereSyncA` de l'agent, visible dans `GET /agents` : le pilotage peut afficher « dernière synchro il y a 3 h » au lieu de déduire l'activité des encaissements.
 - `GET /sync/pull?since=<serverSeq>&limit=` (200 par défaut, 1000 au plus) : `{ changes: { membres, contrats, versements, avances, retraits }, nextCursor, hasMore }`. Commencer à `since=0`, puis repasser `nextCursor` tant que `hasMore` est vrai. Un AGENT reçoit ses membres et contrats, et tous les mouvements de ses contrats, y compris ceux saisis par un superviseur.
 - **Rattrapage après la mise à jour du 30/10/2026** : avant, le pull d'un agent omettait les mouvements saisis par un superviseur sur ses contrats. Les téléphones déjà synchronisés doivent refaire **une fois** un pull complet depuis `since=0` pour les récupérer.
 
@@ -349,3 +403,5 @@ Réservé à l'app mobile des agents ; le back office n'en a normalement pas bes
 5. Montants : chaînes dans les entités et la caisse, nombres dans `derive`, relevé et dashboard.
 6. Photos : `fetch` avec le jeton, puis `URL.createObjectURL`.
 7. Prévoir le réveil lent du serveur gratuit (30 à 60 s).
+8. App agent : envoyer `horlogeClient` à chaque push ; avant d'inscrire un membre, appeler `GET /membres/verifier-telephone`.
+9. Back office : afficher `derniereSyncA` dans le pilotage, `ecartHorlogeS` dans le détail de caisse, et tracer la courbe avec `GET /dashboard/serie`.

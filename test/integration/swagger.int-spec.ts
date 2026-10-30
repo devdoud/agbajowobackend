@@ -59,12 +59,12 @@ describe('documentation Swagger (SWAGGER_ENABLED=true)', () => {
     expect(res.text).toContain('swagger-ui');
   });
 
-  it('décrit les 30 routes de l’API, chacune avec un résumé', () => {
+  it('décrit les 32 routes de l’API, chacune avec un résumé', () => {
     const ops = operations();
 
     expect(doc.openapi).toMatch(/^3\./);
     expect(doc.info.title).toBe('API Agbajowo');
-    expect(ops).toHaveLength(30);
+    expect(ops).toHaveLength(32);
     expect(ops.filter((o) => !o.op.summary).map((o) => o.cle)).toEqual([]);
   });
 

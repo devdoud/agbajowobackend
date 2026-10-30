@@ -38,7 +38,12 @@ export class RetraitsService {
    *  - PARTIEL : le membre reçoit le montant demandé (≤ récupérable) ; la commission/
    *    intérêt restants sont prélevés d'abord.
    */
-  async effectuer(agent: AuthAgent, dto: EffectuerRetraitDto) {
+  async effectuer(
+    agent: AuthAgent,
+    dto: EffectuerRetraitDto,
+    // Écart d'horloge corrigé par la synchro (spec 0005), gardé sur le mouvement.
+    { ecartHorlogeS }: { ecartHorlogeS?: number } = {},
+  ) {
     const id = dto.id ?? randomUUID();
 
     const existant = await this.prisma.retrait.findUnique({
@@ -167,6 +172,7 @@ export class RetraitsService {
             dateRetrait: dateTerrain,
             receiptNumber: await prochainRecu(tx, maintenant),
             idempotencyKey: id,
+            ecartHorlogeS: ecartHorlogeS ?? null,
           },
         });
 

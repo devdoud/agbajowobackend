@@ -3,7 +3,9 @@ import {
   calculerRapportCaisse,
   estJourValide,
   jourBenin,
+  joursDeLaSerie,
   regrouperReceptionsTardives,
+  remplirSerie,
   trierLignes,
   type LigneCaisse,
 } from './caisse';
@@ -250,5 +252,50 @@ describe('regrouperReceptionsTardives', () => {
       effetSolde: 0,
       parJour: [],
     });
+  });
+});
+
+describe('joursDeLaSerie', () => {
+  it('liste les n jours qui finissent par le dernier, du plus ancien au plus récent', () => {
+    expect(joursDeLaSerie('2026-10-30', 3)).toEqual([
+      '2026-10-28',
+      '2026-10-29',
+      '2026-10-30',
+    ]);
+  });
+
+  it('traverse un changement de mois et une année bissextile', () => {
+    expect(joursDeLaSerie('2028-03-01', 3)).toEqual([
+      '2028-02-28',
+      '2028-02-29',
+      '2028-03-01',
+    ]);
+    expect(joursDeLaSerie('2026-10-30', 14)).toHaveLength(14);
+    expect(joursDeLaSerie('2026-10-30', 14)[0]).toBe('2026-10-17');
+  });
+});
+
+describe('remplirSerie', () => {
+  it('met à zéro les jours sans mouvement et ignore les jours hors série', () => {
+    const points = remplirSerie(['2026-10-29', '2026-10-30'], {
+      '2026-10-30': { encaisse: 1500, nbVersements: 2 },
+      '2026-10-01': { encaisse: 999 },
+    });
+    expect(points).toEqual([
+      {
+        date: '2026-10-29',
+        encaisse: 0,
+        nbVersements: 0,
+        avances: 0,
+        retraitsNets: 0,
+      },
+      {
+        date: '2026-10-30',
+        encaisse: 1500,
+        nbVersements: 2,
+        avances: 0,
+        retraitsNets: 0,
+      },
+    ]);
   });
 });

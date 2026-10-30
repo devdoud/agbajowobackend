@@ -107,3 +107,24 @@ export function verifierBornesDateTerrain(
   }
   return { ok: true };
 }
+
+/**
+ * Écart d'horloge d'un téléphone (spec 0005) : `maintenant − horlogeClient`, en
+ * millisecondes, lu au moment du push. Au-delà de la tolérance du futur, les dates
+ * terrain du lot sont corrigées de cet écart ; en deçà, elles passent déjà les bornes
+ * et on les garde telles quelles (renvoie `null`).
+ */
+export function ecartHorloge(
+  horlogeClient: Date,
+  maintenant: Date,
+): number | null {
+  const ecart = maintenant.getTime() - horlogeClient.getTime();
+  return Math.abs(ecart) > TOLERANCE_FUTUR_MINUTES * MS_PAR_MINUTE
+    ? ecart
+    : null;
+}
+
+/** Date terrain ramenée à l'heure du serveur : `date + ecart`. */
+export function corrigerDateTerrain(date: Date, ecartMs: number): Date {
+  return new Date(date.getTime() + ecartMs);
+}
