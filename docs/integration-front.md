@@ -240,7 +240,7 @@ Objet `Contrat` : `id, membreId, ownerId, groupe, cadence, intervalleJours, mois
 }
 ```
 
-`progression` est un pourcentage (0 à 100). `statutCollecte` : `paye`, `a_collecter`, `en_retard` ou `termine`.
+`soldeNet` est ce que le membre peut récupérer **maintenant** : cotisations non encore retirées, moins la commission et l'intérêt qui restent à prélever, moins l'avance. C'est la même règle que `POST /retraits` (le plafond d'un retrait partiel), et il vaut 0 après un retrait total. `soldeDisponible` = `soldeBrut − totalRetire`. `progression` est un pourcentage (0 à 100). `statutCollecte` : `paye`, `a_collecter`, `en_retard` ou `termine`.
 
 Relevé (en **nombres**) : `{ periode: "mois-2" | "cycle", mois?: 2, totalCotisation, commission, avanceImputee, interet, montantNetAVirer }`. `periode` vaut `cycle` pour GROUPE_2.
 

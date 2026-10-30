@@ -10,6 +10,7 @@ import { ClockService } from '@/common/clock/clock.service';
 import { commissionDue } from '@/domain/commission';
 import { statutCollecte } from '@/domain/statut';
 import { montantNetAVirer } from '@/domain/releve';
+import { recuperableNet } from '@/domain/retrait';
 import { dateEcheance, parametresGroupe } from '@/domain/parametres-groupe';
 import type { AuthAgent } from '@/modules/auth/types';
 import type { SouscrireContratDto } from './dto/souscrire-contrat.dto';
@@ -86,6 +87,15 @@ export class ContratsService {
     // Remboursement des avances : imputation par période à préciser (Q29).
     const avanceRestante = avances.reduce((s, a) => s + Number(a.montant), 0);
     const totalRetire = retraits.reduce((s, r) => s + Number(r.montantBrut), 0);
+    // Déjà prélevés par les retraits passés : ne pas les déduire une seconde fois.
+    const commissionPrelevee = retraits.reduce(
+      (s, r) => s + Number(r.commissionPrelevee),
+      0,
+    );
+    const interetPreleve = retraits.reduce(
+      (s, r) => s + Number(r.interetDu),
+      0,
+    );
     const miseAmount = Number(contrat.miseAmount);
 
     const commission = commissionDue(
@@ -124,13 +134,15 @@ export class ContratsService {
         avanceRestante,
         totalRetire,
         soldeDisponible: soldeBrut - totalRetire,
-        // Plancher à 0 : le solde net représente le montant récupérable, jamais négatif
-        // (cohérent avec le net de retrait). La commission G2 est prélevée en entier dès
-        // la 1re mise (R2), donc le net reste 0 tant que les cotisations ne la couvrent pas.
-        soldeNet: Math.max(
-          0,
-          soldeBrut - commission - interetDu - avanceRestante,
-        ),
+        // Ce que le membre peut récupérer maintenant : la même règle que le service des
+        // retraits (R9), sur les cotisations non retirées et ce qui reste à prélever.
+        // Jamais négatif ; la commission G2 est due en entier dès la 1re mise (R2).
+        soldeNet: recuperableNet({
+          brutDisponible: soldeBrut - totalRetire,
+          commissionRestante: Math.max(0, commission - commissionPrelevee),
+          interetRestant: Math.max(0, interetDu - interetPreleve),
+          avanceRestante,
+        }),
         progression:
           contrat.targetMises > 0
             ? Math.min(
