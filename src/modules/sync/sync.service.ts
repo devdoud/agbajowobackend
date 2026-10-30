@@ -301,9 +301,15 @@ export class SyncService {
     const membreWhere: Prisma.MembreWhereInput = this.scopeGlobal(agent)
       ? { serverSeq: { gt: since } }
       : { serverSeq: { gt: since }, ownerId: agent.id };
+    // Mouvements d'un AGENT : ceux qu'il a saisis, et tous ceux des contrats dont il est
+    // propriétaire (un superviseur peut encaisser chez ses membres ; sans eux, ses soldes
+    // et son livret hors ligne seraient faux).
     const agentWhere = this.scopeGlobal(agent)
       ? { serverSeq: { gt: since } }
-      : { serverSeq: { gt: since }, agentId: agent.id };
+      : {
+          serverSeq: { gt: since },
+          OR: [{ agentId: agent.id }, { contrat: { ownerId: agent.id } }],
+        };
 
     const [membres, contrats, versements, avances, retraits] =
       await Promise.all([
