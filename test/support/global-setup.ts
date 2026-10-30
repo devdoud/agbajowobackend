@@ -31,10 +31,12 @@ export default async function globalSetup(): Promise<void> {
   const uri = container.getConnectionUri();
   process.env.DATABASE_URL = uri;
   process.env.TEST_DATABASE_URL = uri;
+  // Déclarée dans schema.prisma (directUrl) : la même base que DATABASE_URL ici.
+  process.env.DIRECT_URL = uri;
   process.env.TEST_DATABASE_NAME = container.getDatabase();
 
   execSync('npx prisma migrate deploy', {
-    env: { ...process.env, DATABASE_URL: uri },
+    env: { ...process.env, DATABASE_URL: uri, DIRECT_URL: uri },
     stdio: 'inherit',
     shell: process.platform === 'win32' ? 'cmd.exe' : '/bin/sh',
   });

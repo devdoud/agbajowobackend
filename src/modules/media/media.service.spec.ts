@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Media } from '@prisma/client';
 import { MediaService } from './media.service';
+import { StockageDisque } from './stockage/stockage-disque';
 
 let mediaDir: string;
 
@@ -21,7 +22,11 @@ function creerService(findUnique?: jest.Mock) {
     },
   };
   const config = { get: getConfig };
-  const service = new MediaService(prisma as never, config as never);
+  const service = new MediaService(
+    prisma as never,
+    config as never,
+    new StockageDisque(mediaDir),
+  );
   return { service, prisma };
 }
 

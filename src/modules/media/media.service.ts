@@ -1,17 +1,19 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
 import type { Media } from '@prisma/client';
 import { PrismaService } from '@/prisma/prisma.service';
 import type { Env } from '@/config/env.validation';
 import type { AuthAgent } from '@/modules/auth/types';
+import {
+  STOCKAGE_PHOTOS,
+  type StockagePhotos,
+} from './stockage/stockage-photos';
 
 /** Extensions de fichier autorisées, indexées par type MIME. */
 const MIMES_AUTORISES: Record<string, string> = {
@@ -31,11 +33,8 @@ export class MediaService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService<Env, true>,
+    @Inject(STOCKAGE_PHOTOS) private readonly stockage: StockagePhotos,
   ) {}
-
-  private get dossier(): string {
-    return resolve(this.config.get('MEDIA_DIR', { infer: true }));
-  }
 
   private get tailleMax(): number {
     return this.config.get('MEDIA_MAX_BYTES', { infer: true });
@@ -43,7 +42,7 @@ export class MediaService {
 
   /**
    * Enregistre une photo : validation MIME/taille, idempotence par `id`,
-   * déduplication par `checksum`, écriture sur disque, création de l'enregistrement.
+   * déduplication par `checksum`, écriture dans le stockage, création de l'enregistrement.
    */
   async enregistrer(fichier: FichierEntrant): Promise<Media> {
     const extension = MIMES_AUTORISES[fichier.mime];
@@ -78,8 +77,7 @@ export class MediaService {
 
     const id = fichier.id ?? randomUUID();
     const nomFichier = `${id}.${extension}`;
-    await mkdir(this.dossier, { recursive: true });
-    await writeFile(join(this.dossier, nomFichier), fichier.buffer);
+    await this.stockage.ecrire(nomFichier, fichier.buffer, fichier.mime);
 
     return this.prisma.media.create({
       data: {
@@ -111,10 +109,10 @@ export class MediaService {
       if (!membre) throw new NotFoundException('Média introuvable');
     }
 
-    const chemin = join(this.dossier, media.chemin);
-    if (!existsSync(chemin)) {
+    const buffer = await this.stockage.lire(media.chemin);
+    if (!buffer) {
       throw new NotFoundException('Fichier média absent du stockage');
     }
-    return { media, buffer: await readFile(chemin) };
+    return { media, buffer };
   }
 }

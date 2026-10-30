@@ -20,6 +20,14 @@ export function configurerApp(app: INestApplication): void {
 
   const config = app.get(ConfigService<Env, true>);
 
+  // Derrière Render ou Caddy, `req.ip` doit être l'IP du client (la limite de débit en
+  // dépend). Un nombre de sauts, jamais `true` : le proxy ajoute à X-Forwarded-For sans
+  // filtrer ce que le client a envoyé (spec 0004).
+  const express = app.getHttpAdapter().getInstance() as {
+    set(cle: string, valeur: unknown): void;
+  };
+  express.set('trust proxy', config.get('TRUST_PROXY', { infer: true }) ?? 0);
+
   app.use(helmet());
   app.use(requestId);
   app.useGlobalFilters(new AllExceptionsFilter());

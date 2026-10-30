@@ -111,7 +111,7 @@ export class AvancesService {
             ),
             interet: BigInt(interetAvance(miseAmount, dto.nbMois)),
             dateAvance: dateTerrain,
-            receiptNumber: await prochainRecu(tx),
+            receiptNumber: await prochainRecu(tx, maintenant),
             idempotencyKey: id,
           },
         });

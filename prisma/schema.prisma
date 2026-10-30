@@ -11,6 +11,8 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // Pooler en mode session pour les migrations (spec 0004) ; en dev et tests = DATABASE_URL.
+  directUrl = env("DIRECT_URL")
 }
 
 // ───────────────────────── Énumérations ─────────────────────────
