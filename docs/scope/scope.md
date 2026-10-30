@@ -31,12 +31,13 @@ _Ce sont des recommandations pour garder ton build ordonné, pas des obligations
 | 4 | Clôture de contrat | Slice 3 | planned |
 | 5 | Modifier et archiver membres et contrats | Slice 4 | planned |
 | 6 | Socle données personnelles | Slice 5 | planned |
-| 7 | Sauvegardes testées | Slice 6 | planned |
-| 8 | Suivi des erreurs | Slice 6 | planned |
+| 7 | Sauvegardes testées | Slice 6 | in-progress |
+| 8 | Suivi des erreurs | Slice 6 | in-progress |
 | 9 | Tests d'intégration : retrait et concurrence | Foundation | done |
 | 10 | Remise de caisse du soir | Slice 1 | planned |
 | 11 | Verrou de contrat sur les avances | Foundation | done |
 | 12 | Règles des dates terrain | Foundation | done |
+| 13 | Mise en ligne gratuite (Render, Supabase) | Foundation | in-progress |
 
 ## Déjà construit
 
@@ -118,6 +119,19 @@ Contrôler la date terrain des versements, avances et retraits, qui décide du j
 - [x] Test it: `/test règles des dates terrain`
 Spec [0003](../specs/0003-regles-dates-terrain/index.md) · code in `src/domain/date-terrain.ts`, `src/common/schemas/date-terrain.schema.ts`, `src/modules/sync/sync.service.ts`, services collecte, avances et retraits
 
+### 13. Mise en ligne gratuite (Render, Supabase) · in-progress · from spec 0004
+Mettre l'API en ligne pour le pilote sans budget ni carte bancaire : API sur Render gratuit, base et photos sur Supabase gratuit, déploiement automatique après la CI verte. Elle ouvre les fonctions 7 et 8, qui en dépendent.
+**Done when:** l'API répond en HTTPS sur le domaine du pilote, avec la base vérifiée dans la santé, les photos dans Supabase Storage, la limite de débit par client, le Data API de Supabase fermé, et un premier compte admin ; un merge sur `main` avec la CI verte redéploie tout seul.
+- [x] Design it (spec): `/architect hébergement gratuit`
+- [ ] Build it: `/develop mise en ligne gratuite`
+   - [x] Isolation des tests, nouvelles variables d'env, `directUrl`, `trust proxy` (AC-1, AC-2, AC-9, AC-12)
+   - [x] Photos dans Supabase Storage par un pilote de stockage (AC-3, AC-4)
+   - [x] Data API fermé, santé avec la base, date Bénin des reçus, script du premier admin (AC-5 à AC-8)
+   - [ ] Blueprint Render, guide de mise en ligne, première mise en ligne (AC-10, AC-11)
+- [ ] Verify it: `/check verify mise en ligne gratuite`
+- [ ] Test it: `/test mise en ligne gratuite`
+Spec [0004](../specs/0004-hebergement-gratuit/0004-mise-en-ligne.md) (parapluie [index](../specs/0004-hebergement-gratuit/index.md)) · code in `src/app.setup.ts`, `src/config/env.validation.ts`, `src/modules/media/stockage/`, `src/health/`, `src/common/receipt.ts`, `src/modules/agents/premier-admin.ts`, `scripts/creer-admin.ts`, `prisma/migrations/20261030090000_fermer_data_api_supabase/`, `render.yaml`, `docs/exploitation/mise-en-ligne.md`
+
 ## Slice 1: Rapport de caisse
 
 ### 2. Rapport de caisse par agent et par jour · in-progress · GA
@@ -172,15 +186,29 @@ Le minimum pour traiter les données des membres proprement pendant le pilote (l
 
 ## Slice 6: Exploitation
 
-### 7. Sauvegardes testées · needs a decision
+### 7. Sauvegardes testées · in-progress
 Le script de sauvegarde existe, mais rien ne prouve qu'une restauration marche. Il faut le planifier, garder une copie hors du serveur, et répéter une restauration.
 **Done when:** la sauvegarde de la base et des médias tourne chaque jour, une copie existe hors du VPS, et une restauration complète a été répétée et documentée.
-- [ ] Design it (spec): `/architect sauvegardes testées`
+- [x] Design it (spec): `/architect sauvegardes testées`
+- [ ] Build it: `/develop sauvegardes testées`
+   - [ ] Dépôt privé, clé `age` hors ligne, rôle de lecture seule, secrets (AC-1, AC-7)
+   - [ ] Sauvegarde quotidienne avec contrôle de restauration (AC-2, AC-5, AC-6)
+   - [ ] Sauvegardes hebdomadaire et mensuelle, Releases, purge, Google Drive (AC-3, AC-4, AC-6)
+   - [ ] Guide de restauration et exercice complet noté (AC-8)
+- [ ] Verify it: `/check verify sauvegardes testées`
+- [ ] Test it: `/test sauvegardes testées`
+Spec [0004](../specs/0004-hebergement-gratuit/0004-sauvegardes.md) (parapluie [index](../specs/0004-hebergement-gratuit/index.md)) · dépend de la fonction 13
 
-### 8. Suivi des erreurs · needs a decision
+### 8. Suivi des erreurs · in-progress
 Être prévenu vite quand l'API tombe ou renvoie des erreurs 500 pendant le pilote.
 **Done when:** une erreur serveur ou une panne de `/api/v1/health` déclenche une alerte en quelques minutes, avec l'identifiant de requête pour retrouver le contexte.
-- [ ] Design it (spec): `/architect suivi des erreurs`
+- [x] Design it (spec): `/architect suivi des erreurs`
+- [ ] Build it: `/develop suivi des erreurs`
+   - [ ] `requestId` limité aux UUID, Sentry sans données personnelles, envoi des 5xx (AC-2 à AC-5)
+   - [ ] Comptes et alertes UptimeRobot, Sentry, Healthchecks.io, test de bout en bout (AC-1, AC-6, AC-7, AC-8)
+- [ ] Verify it: `/check verify suivi des erreurs`
+- [ ] Test it: `/test suivi des erreurs`
+Spec [0004](../specs/0004-hebergement-gratuit/0004-alertes.md) (parapluie [index](../specs/0004-hebergement-gratuit/index.md)) · dépend de la fonction 13
 
 ## Deferred
 Hors de la tranche pilote, gardé pour que le plan reste honnête.
